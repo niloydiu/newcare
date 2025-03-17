@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from "react";
 import { assets } from "../../assets/assets_admin/assets";
 import { AdminContext } from "../../context/AdminContext";
-import { AppContext } from "../../context/Appcontext";
+import { AppContext } from "../../context/AppContext";
 
 const Dashboard = () => {
   const { aToken, getDashData, dashData, cancelAppointment } =
