@@ -14,6 +14,9 @@ const Appointment = () => {
   const [doctorsSlot, setDoctorsSlot] = useState([]);
   const [slotIndex, setSlotIndex] = useState(0);
   const [slotTime, setSlotTime] = useState("");
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
   const navigate = useNavigate();
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -21,6 +24,19 @@ const Appointment = () => {
   const fetchDocInfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
     setDocInfo(docInfo);
+  };
+
+  const fetchDocReviews = async () => {
+    try {
+      const { data } = await axios.get(backendUrl + "/api/doctor/reviews?docId=" + docId);
+      if (data.success) {
+        setReviews(data.reviews);
+        setAverageRating(data.averageRating);
+        setTotalReviews(data.totalReviews);
+      }
+    } catch (error) {
+      console.log("Error fetching reviews:", error);
+    }
   };
   const getAvailableSlot = async () => {
     setDoctorsSlot([]);
@@ -148,6 +164,7 @@ const Appointment = () => {
 
   useEffect(() => {
     fetchDocInfo();
+    fetchDocReviews();
   }, [doctors, docId]);
 
   useEffect(() => {
@@ -180,6 +197,12 @@ const Appointment = () => {
                 className=" w-5"
               />
             </p>
+            {totalReviews > 0 && (
+              <div className="flex items-center gap-1 text-sm mt-0.5">
+                <span className="text-amber-400 font-semibold">★ {averageRating}</span>
+                <span className="text-zinc-400 text-xs">({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})</span>
+              </div>
+            )}
             <div className=" flex items-center gap-2 text-sm mt-1 text-gray-600">
               <p>
                 {docInfo.degree} - {docInfo.speciality}{" "}
@@ -250,6 +273,45 @@ const Appointment = () => {
             Book an appointment
           </button>
         </div>
+        {/* Reviews Section */}
+        <div className="mt-12 bg-white rounded-2xl p-6 md:p-8 border border-zinc-100 shadow-sm max-w-4xl">
+          <h3 className="text-xl font-bold text-zinc-800 mb-6 flex items-center gap-2">
+            Reviews & Feedback
+            {totalReviews > 0 && (
+              <span className="text-sm font-medium bg-amber-50/60 text-amber-600 px-2.5 py-0.5 rounded-full border border-amber-100 flex items-center gap-1">
+                ★ {averageRating} ({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})
+              </span>
+            )}
+          </h3>
+
+          {reviews.length === 0 ? (
+            <p className="text-zinc-400 text-sm italic">No reviews yet for this doctor.</p>
+          ) : (
+            <div className="flex flex-col gap-6 max-h-[500px] overflow-y-auto pr-2">
+              {reviews.map((rev, idx) => (
+                <div key={idx} className="border-b border-zinc-100 pb-5 last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <img
+                      src={rev.userImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                      alt={rev.userName}
+                      className="w-10 h-10 rounded-full object-cover border border-zinc-100 bg-zinc-50"
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-zinc-800">{rev.userName}</p>
+                      <div className="flex items-center gap-1 text-xs">
+                        <span className="text-amber-400 font-semibold">{"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}</span>
+                        <span className="text-zinc-300">|</span>
+                        <span className="text-zinc-400">{new Date(rev.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-zinc-600 pl-13 leading-relaxed font-normal">{rev.review}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Listing Related Doctors  */}
         <Relateddoctors docId={docId} speciality={docInfo.speciality} />
       </div>

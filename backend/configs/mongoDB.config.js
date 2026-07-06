@@ -5,10 +5,12 @@ const connectDB = async () => {
     mongoose.connection.on("connected", () =>
       console.log("Database Connected")
     );
+    mongoose.connection.on("error", (err) =>
+      console.log("Database Connection Error:", err.message)
+    );
     await mongoose.connect(process.env.MONGO_URI);
   } catch (error) {
-    console.log(error);
-    process.exit(1);
+    console.log("Failed to establish initial Database Connection:", error.message);
   }
 };
 

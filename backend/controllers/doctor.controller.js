@@ -194,6 +194,40 @@ const updateDoctorProfile = async (req, res) => {
   }
 };
 
+// API to get reviews for a specific doctor
+const getDoctorReviews = async (req, res) => {
+  try {
+    const { docId } = req.query;
+    if (!docId) {
+      return res.status(400).json({ success: false, message: "Doctor ID is required" });
+    }
+
+    // Find all completed appointments for this doctor that have been reviewed
+    const appointments = await appointmentModel.find({ docId, isReviewed: true });
+    
+    // Calculate average rating
+    let totalRating = 0;
+    const reviews = appointments.map((appt) => {
+      totalRating += appt.rating;
+      return {
+        _id: appt._id,
+        userName: appt.userData.name,
+        userImage: appt.userData.image,
+        rating: appt.rating,
+        review: appt.review,
+        date: appt.date,
+      };
+    });
+
+    const averageRating = reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : 0;
+
+    res.json({ success: true, reviews, averageRating: Number(averageRating), totalReviews: reviews.length });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   appointmentCancel,
   appointmentComplete,
@@ -204,4 +238,5 @@ export {
   doctorProfile,
   loginDoctor,
   updateDoctorProfile,
+  getDoctorReviews,
 };

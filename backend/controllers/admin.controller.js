@@ -186,6 +186,189 @@ const adminDashboard = async (req, res) => {
   }
 };
 
+// API to delete doctor by admin
+const deleteDoctor = async (req, res) => {
+  try {
+    const { docId } = req.body;
+    if (!docId) {
+      return res.status(400).json({ success: false, message: "Doctor ID is required" });
+    }
+    await doctorModel.findByIdAndDelete(docId);
+    res.json({ success: true, message: "Doctor deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to update doctor details by admin
+const updateDoctor = async (req, res) => {
+  try {
+    const {
+      docId,
+      name,
+      email,
+      speciality,
+      degree,
+      experience,
+      about,
+      fees,
+      address,
+      available,
+    } = req.body;
+    const imageFile = req.file;
+
+    if (!docId) {
+      return res.status(400).json({ success: false, message: "Doctor ID is required" });
+    }
+
+    const updateData = {
+      name,
+      email,
+      speciality,
+      degree,
+      experience,
+      about,
+      fees: Number(fees),
+      address: typeof address === "string" ? JSON.parse(address) : address,
+      available: available === "true" || available === true,
+    };
+
+    if (imageFile) {
+      const uploadResult = await cloudinary.uploader.upload(imageFile.path, {
+        resource_type: "image",
+      });
+      updateData.image = uploadResult.secure_url;
+    }
+
+    await doctorModel.findByIdAndUpdate(docId, updateData);
+    res.json({ success: true, message: "Doctor updated successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to get all patients list for admin pannel
+const allPatients = async (req, res) => {
+  try {
+    const patients = await userModel.find({}).select("-password");
+    res.json({ success: true, patients });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to delete patient account by admin
+const deletePatient = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+    await userModel.findByIdAndDelete(userId);
+    // Delete all appointments booked by this patient
+    await appointmentModel.deleteMany({ userId });
+    res.json({ success: true, message: "Patient and their appointments deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to delete appointment by admin
+const deleteAppointment = async (req, res) => {
+  try {
+    const { appointmentId } = req.body;
+    if (!appointmentId) {
+      return res.status(400).json({ success: false, message: "Appointment ID is required" });
+    }
+
+    const appointmentData = await appointmentModel.findById(appointmentId);
+    if (!appointmentData) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    // Release slot if appointment was not cancelled/completed
+    if (!appointmentData.cancelled && !appointmentData.isCompleted) {
+      const { docId, slotDate, slotTime } = appointmentData;
+      const docData = await doctorModel.findById(docId);
+      if (docData) {
+        let slots_booked = docData.slots_booked || {};
+        if (slots_booked[slotDate]) {
+          slots_booked[slotDate] = slots_booked[slotDate].filter(
+            (time) => time !== slotTime
+          );
+          await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+        }
+      }
+    }
+
+    await appointmentModel.findByIdAndDelete(appointmentId);
+    res.json({ success: true, message: "Appointment deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to reschedule appointment by admin
+const rescheduleAppointmentAdmin = async (req, res) => {
+  try {
+    const { appointmentId, newSlotDate, newSlotTime } = req.body;
+    if (!appointmentId || !newSlotDate || !newSlotTime) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const appointmentData = await appointmentModel.findById(appointmentId);
+    if (!appointmentData) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    const { docId, slotDate: oldSlotDate, slotTime: oldSlotTime } = appointmentData;
+    const docData = await doctorModel.findById(docId);
+    if (!docData) {
+      return res.status(404).json({ success: false, message: "Doctor not found" });
+    }
+
+    let slots_booked = docData.slots_booked || {};
+
+    // 1. Release the old slot
+    if (slots_booked[oldSlotDate]) {
+      slots_booked[oldSlotDate] = slots_booked[oldSlotDate].filter(
+        (time) => time !== oldSlotTime
+      );
+    }
+
+    // 2. Check if new slot is available
+    if (slots_booked[newSlotDate] && slots_booked[newSlotDate].includes(newSlotTime)) {
+      return res.status(400).json({ success: false, message: "The requested new slot is already booked" });
+    }
+
+    // 3. Book the new slot
+    if (slots_booked[newSlotDate]) {
+      slots_booked[newSlotDate].push(newSlotTime);
+    } else {
+      slots_booked[newSlotDate] = [newSlotTime];
+    }
+
+    // Update doctor slots
+    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+
+    // Update appointment document
+    await appointmentModel.findByIdAndUpdate(appointmentId, {
+      slotDate: newSlotDate,
+      slotTime: newSlotTime,
+    });
+
+    res.json({ success: true, message: "Appointment rescheduled successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   addDoctor,
   adminDashboard,
@@ -193,4 +376,10 @@ export {
   appointmentCancel,
   appointmentsAdmin,
   loginAdmin,
+  deleteDoctor,
+  updateDoctor,
+  allPatients,
+  deletePatient,
+  deleteAppointment,
+  rescheduleAppointmentAdmin,
 };

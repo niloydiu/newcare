@@ -55,6 +55,17 @@ const Sidebar = () => {
             <img src={assets.people_icon} alt="people_icon" />
             <p className="hidden md:block">Doctors List</p>
           </NavLink>
+          <NavLink
+            to={"/all-patients"}
+            className={({ isActive }) =>
+              `flex items-center gap-3 py-3.5 px-3 md:px-9 marker:min-w-72 cursor-pointer ${
+                isActive ? " bg-[#f2f3ff] border-r-4 border-primary" : ""
+              }`
+            }
+          >
+            <img src={assets.patients_icon} alt="patients_icon" className="w-6 h-6 opacity-75" />
+            <p className="hidden md:block">Patients List</p>
+          </NavLink>
         </ul>
       )}
       {dToken && (

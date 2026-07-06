@@ -10,8 +10,10 @@ const AdminContextProvider = (props) => {
   );
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [dashData, setDashData] = useState(false);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
   const getAllDoctors = async () => {
     try {
       const { data } = await axios.post(
@@ -29,6 +31,46 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+
+  const deleteDoctor = async (docId) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/admin/delete-doctor",
+        { docId },
+        { headers: { aToken } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getAllDoctors();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const updateDoctor = async (formData) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/admin/update-doctor",
+        formData,
+        { headers: { aToken, "Content-Type": "multipart/form-data" } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getAllDoctors();
+        return true;
+      } else {
+        toast.error(data.message);
+        return false;
+      }
+    } catch (error) {
+      toast.error(error.message);
+      return false;
+    }
+  };
+
   const changeAvailability = async (docId) => {
     try {
       const { data } = await axios.post(
@@ -46,6 +88,7 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+
   const getAllAppointments = async () => {
     try {
       const { data } = await axios.get(backendUrl + "/api/admin/appointments", {
@@ -61,6 +104,7 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+
   const cancelAppointment = async (appointmentId) => {
     try {
       const { data } = await axios.post(
@@ -71,6 +115,7 @@ const AdminContextProvider = (props) => {
       if (data.success) {
         toast.success(data.message);
         getAllAppointments();
+        getDashData();
       } else {
         toast.error(data.message);
       }
@@ -78,6 +123,82 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+
+  const deleteAppointment = async (appointmentId) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/admin/delete-appointment",
+        { appointmentId },
+        { headers: { aToken } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getAllAppointments();
+        getDashData();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const rescheduleAppointmentAdmin = async (appointmentId, newSlotDate, newSlotTime) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/admin/reschedule-appointment",
+        { appointmentId, newSlotDate, newSlotTime },
+        { headers: { aToken } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getAllAppointments();
+        getDashData();
+        return true;
+      } else {
+        toast.error(data.message);
+        return false;
+      }
+    } catch (error) {
+      toast.error(error.message);
+      return false;
+    }
+  };
+
+  const getAllPatients = async () => {
+    try {
+      const { data } = await axios.get(backendUrl + "/api/admin/all-patients", {
+        headers: { aToken },
+      });
+      if (data.success) {
+        setPatients(data.patients);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const deletePatient = async (userId) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/admin/delete-patient",
+        { userId },
+        { headers: { aToken } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getAllPatients();
+        getDashData();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const getDashData = async () => {
     try {
       const { data } = await axios.get(backendUrl + "/api/admin/dashboard", {
@@ -93,6 +214,7 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+
   const value = {
     getDashData,
     dashData,
@@ -106,6 +228,13 @@ const AdminContextProvider = (props) => {
     getAllDoctors,
     changeAvailability,
     cancelAppointment,
+    deleteDoctor,
+    updateDoctor,
+    deleteAppointment,
+    rescheduleAppointmentAdmin,
+    patients,
+    getAllPatients,
+    deletePatient,
   };
   return (
     <AdminContext.Provider value={value}>

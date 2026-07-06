@@ -8,6 +8,7 @@ import {
   doctorProfile,
   loginDoctor,
   updateDoctorProfile,
+  getDoctorReviews,
 } from "../controllers/doctor.controller.js";
 import authDoctor from "../middlewares/authDoctor.middleware.js";
 
@@ -15,6 +16,7 @@ const doctorRouter = express.Router();
 
 doctorRouter.get("/list", doctorList);
 doctorRouter.post("/login", loginDoctor);
+doctorRouter.get("/reviews", getDoctorReviews);
 doctorRouter.get("/appointments", authDoctor, appointmentsDoctor);
 doctorRouter.post("/complete-appointment", authDoctor, appointmentComplete);
 doctorRouter.post("/cancel-appointment", authDoctor, appointmentCancel);

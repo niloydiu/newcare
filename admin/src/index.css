@@ -2,13 +2,63 @@
 
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #5f6fff;
+* {
+  font-family: 'Outfit', sans-serif;
+  scroll-behavior: smooth;
 }
 
-::-webkit-scrollbar {
-  @apply hidden;
+@theme {
+  --color-primary: #5f6fff;
+  --color-primary-dark: #3b4cff;
+  --color-primary-light: #eaecff;
+  --color-accent: #06b6d4;
+  --color-dark-surface: #0f172a;
 }
-* {
-  font-family: "Outfit", sans-serif;
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Global Transition Defaults */
+a, button, input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Premium Card hover effects */
+.hover-card-premium {
+  @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
 }

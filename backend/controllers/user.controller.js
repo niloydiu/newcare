@@ -216,6 +216,168 @@ const cancelAppointment = async (req, res) => {
   }
 };
 
+// API to reschedule appointment
+const rescheduleAppointment = async (req, res) => {
+  try {
+    const { userId, appointmentId, newSlotDate, newSlotTime } = req.body;
+    if (!appointmentId || !newSlotDate || !newSlotTime) {
+      return res.status(400).json({ success: false, message: "Missing required fields for rescheduling" });
+    }
+
+    const appointmentData = await appointmentModel.findById(appointmentId);
+    if (!appointmentData) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    // Verify appointment user
+    if (appointmentData.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to reschedule this appointment",
+      });
+    }
+
+    if (appointmentData.cancelled || appointmentData.isCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot reschedule cancelled or completed appointments",
+      });
+    }
+
+    const { docId, slotDate: oldSlotDate, slotTime: oldSlotTime } = appointmentData;
+    const docData = await doctorModel.findById(docId);
+    if (!docData) {
+      return res.status(404).json({ success: false, message: "Doctor not found" });
+    }
+
+    let slots_booked = docData.slots_booked || {};
+
+    // 1. Release the old slot first
+    if (slots_booked[oldSlotDate]) {
+      slots_booked[oldSlotDate] = slots_booked[oldSlotDate].filter(
+        (time) => time !== oldSlotTime
+      );
+    }
+
+    // 2. Check if the new slot is available
+    if (slots_booked[newSlotDate] && slots_booked[newSlotDate].includes(newSlotTime)) {
+      return res.status(400).json({
+        success: false,
+        message: "The requested new slot is already booked",
+      });
+    }
+
+    // 3. Book the new slot
+    if (slots_booked[newSlotDate]) {
+      slots_booked[newSlotDate].push(newSlotTime);
+    } else {
+      slots_booked[newSlotDate] = [newSlotTime];
+    }
+
+    // Update doctor slots
+    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+
+    // Update appointment document
+    await appointmentModel.findByIdAndUpdate(appointmentId, {
+      slotDate: newSlotDate,
+      slotTime: newSlotTime,
+    });
+
+    res.json({ success: true, message: "Appointment rescheduled successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API for Google Sign-In / Sign-Up
+const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, message: "Google credential token missing" });
+    }
+
+    // Verify Google Token via Google's tokeninfo API
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    if (!response.ok) {
+      return res.status(400).json({ success: false, message: "Invalid Google token" });
+    }
+
+    const payload = await response.json();
+    const { email, name, picture, email_verified } = payload;
+
+    if (email_verified !== "true" && email_verified !== true) {
+      return res.status(400).json({ success: false, message: "Google email is not verified" });
+    }
+
+    // Check if user already exists
+    let user = await userModel.findOne({ email });
+
+    if (!user) {
+      // Create a new user with Google details and random password
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+      const userData = {
+        name,
+        email,
+        password: hashedPassword,
+        image: picture || "",
+      };
+      
+      const newUser = new userModel(userData);
+      user = await newUser.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    res.json({ success: true, token, message: "Authenticated successfully" });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API to submit a review for an appointment
+const addReview = async (req, res) => {
+  try {
+    const { userId, appointmentId, rating, review } = req.body;
+    if (!appointmentId || !rating) {
+      return res.status(400).json({ success: false, message: "Missing appointment ID or rating" });
+    }
+
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    // Verify appointment belongs to this user
+    if (appointment.userId !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized action" });
+    }
+
+    // Verify appointment is completed
+    if (!appointment.isCompleted) {
+      return res.status(400).json({ success: false, message: "Can only review completed appointments" });
+    }
+
+    // Update appointment with rating/review
+    await appointmentModel.findByIdAndUpdate(appointmentId, {
+      rating: Number(rating),
+      review: review || "",
+      isReviewed: true,
+    });
+
+    res.json({ success: true, message: "Review submitted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   bookAppointment,
   cancelAppointment,
@@ -224,4 +386,7 @@ export {
   loginUser,
   registerUser,
   updateProfile,
+  googleAuth,
+  rescheduleAppointment,
+  addReview,
 };

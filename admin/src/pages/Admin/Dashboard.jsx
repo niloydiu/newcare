@@ -7,6 +7,7 @@ const Dashboard = () => {
   const { aToken, getDashData, dashData, cancelAppointment } =
     useContext(AdminContext);
   const { slotDateFormat } = useContext(AppContext);
+
   useEffect(() => {
     if (aToken) {
       getDashData();
@@ -15,84 +16,101 @@ const Dashboard = () => {
 
   return (
     dashData && (
-      <div className=" m-5">
-        <div className=" flex flex-wrap gap-3">
-          <div className=" flex items-center gap-2 bg-white p-4 min-w-52 rounded border-2 border-gray-100 cursor-pointer hover:scale-105 transition-all duration-300">
-            <img src={assets.doctor_icon} alt="doctor_icon" className=" w-14" />
+      <div className="m-6 animate-fade-in">
+        {/* Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {/* Doctors Card */}
+          <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-zinc-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <img src={assets.doctor_icon} alt="doctor_icon" className="w-10" />
+            </div>
             <div>
-              <p className=" text-xl font-semibold text-gray-600">
-                {dashData.doctors}
-              </p>
-              <p className=" text-gray-400">Doctors</p>
+              <p className="text-2xl font-bold text-zinc-800">{dashData.doctors}</p>
+              <p className="text-zinc-500 text-sm font-semibold">Total Doctors</p>
             </div>
           </div>
-          <div className=" flex items-center gap-2 bg-white p-4 min-w-52 rounded border-2 border-gray-100 cursor-pointer hover:scale-105 transition-all duration-300">
-            <img
-              src={assets.appointments_icon}
-              alt="appointment_icon"
-              className=" w-14"
-            />
+
+          {/* Appointments Card */}
+          <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-zinc-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+              <img src={assets.appointments_icon} alt="appointment_icon" className="w-10" />
+            </div>
             <div>
-              <p className=" text-xl font-semibold text-gray-600">
-                {dashData.appointments}
-              </p>
-              <p className=" text-gray-400">Appointments</p>
+              <p className="text-2xl font-bold text-zinc-800">{dashData.appointments}</p>
+              <p className="text-zinc-500 text-sm font-semibold">Total Appointments</p>
             </div>
           </div>
-          <div className=" flex items-center gap-2 bg-white p-4 min-w-52 rounded border-2 border-gray-100 cursor-pointer hover:scale-105 transition-all duration-300">
-            <img
-              src={assets.patients_icon}
-              alt="patients_icon"
-              className=" w-14"
-            />
+
+          {/* Patients Card */}
+          <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-zinc-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-teal-50 flex items-center justify-center group-hover:bg-teal-100 transition-colors">
+              <img src={assets.patients_icon} alt="patients_icon" className="w-10" />
+            </div>
             <div>
-              <p className=" text-xl font-semibold text-gray-600">
-                {dashData.patients}
-              </p>
-              <p className=" text-gray-400">Patients</p>
+              <p className="text-2xl font-bold text-zinc-800">{dashData.patients}</p>
+              <p className="text-zinc-500 text-sm font-semibold">Total Patients</p>
             </div>
           </div>
         </div>
-        <div className=" bg-white">
-          <div className=" flex items-center gap-2.5 px-4 py-4 mt-10 rounded-t border border-gray-100">
-            <img src={assets.list_icon} alt="list_icon" />
-            <p>Latest Bookings</p>
+
+        {/* Latest Bookings Table */}
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm mt-8 overflow-hidden">
+          <div className="flex items-center gap-2.5 px-6 py-5 border-b border-zinc-100">
+            <img src={assets.list_icon} alt="list_icon" className="w-5 h-5" />
+            <h3 className="font-bold text-zinc-800 text-lg">Latest Bookings</h3>
           </div>
-          <div className=" pt-4 border border-gray-100 border-t-0">
-            {dashData.latestAppointments.map((item, index) => (
-              <div
-                key={index}
-                className=" flex items-center px-6 py-3 gap-3 hover:bg-gray-100"
-              >
-                <img
-                  src={item.docData.image}
-                  alt="Doctor's image"
-                  className=" rounded-full w-10"
-                />
-                <div className=" flex-1 text-sm">
-                  <p className=" text-gray-800 font-medium">
-                    {item.docData.name}
-                  </p>
-                  <p className=" text-gray-600">
-                    {slotDateFormat(item.slotDate)}
-                  </p>
+          
+          <div className="divide-y divide-zinc-50">
+            {dashData.latestAppointments.length === 0 ? (
+              <div className="p-6 text-center text-zinc-400 text-sm">No recent bookings.</div>
+            ) : (
+              dashData.latestAppointments.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 gap-4 hover:bg-zinc-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={item.docData.image}
+                      alt="Doctor"
+                      className="rounded-full w-10 h-10 object-cover border border-zinc-100 bg-indigo-50"
+                    />
+                    <div>
+                      <p className="text-zinc-850 font-bold text-sm">{item.docData.name}</p>
+                      <p className="text-zinc-400 text-xs mt-0.5">{slotDateFormat(item.slotDate)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-6 text-sm">
+                    <span className="text-zinc-500 font-medium">Slot: {item.slotTime}</span>
+                    
+                    <div>
+                      {item.cancelled ? (
+                        <span className="px-3 py-1 bg-red-50 text-red-500 text-xs font-semibold rounded-full border border-red-100">
+                          Cancelled
+                        </span>
+                      ) : item.isCompleted ? (
+                        <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-semibold rounded-full border border-green-100">
+                          Completed
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => cancelAppointment(item._id)}
+                          className="flex items-center justify-center p-1.5 rounded-full hover:bg-red-50 border border-zinc-100 hover:border-red-200 transition-colors cursor-pointer group"
+                          title="Cancel Booking"
+                        >
+                          <img
+                            src={assets.cancel_icon}
+                            alt="Cancel"
+                            className="w-5 h-5 group-hover:scale-105 transition-transform"
+                          />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                {item.cancelled ? (
-                  <p className=" text-red-400 text-xs font-medium">Cancelled</p>
-                ) : item.isCompleted ? (
-                  <p className=" text-green-500 text-xs font-medium">
-                    Completed
-                  </p>
-                ) : (
-                  <img
-                    onClick={() => cancelAppointment(item._id)}
-                    src={assets.cancel_icon}
-                    alt="cancel_icon"
-                    className=" w-10 cursor-pointer"
-                  />
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
