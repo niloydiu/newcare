@@ -10,7 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { setAToken, backendUrl } = useContext(AdminContext);
-  const { setDToken, dToken } = useContext(DoctorContext);
+  const { setDToken } = useContext(DoctorContext);
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {

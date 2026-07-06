@@ -115,7 +115,7 @@ const DoctorProfile = () => {
                     onChange={(e) =>
                       setProfileData((prev) => ({
                         ...prev,
-                        address: { ...prev, line1: e.target.value },
+                        address: { ...prev.address, line1: e.target.value },
                       }))
                     }
                   />
@@ -131,7 +131,7 @@ const DoctorProfile = () => {
                     onChange={(e) =>
                       setProfileData((prev) => ({
                         ...prev,
-                        address: { ...prev, line2: e.target.value },
+                        address: { ...prev.address, line2: e.target.value },
                       }))
                     }
                   />

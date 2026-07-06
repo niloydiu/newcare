@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import Navbar from "./components/Navbar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -25,7 +25,15 @@ const App = () => {
         <Sidebar />
         <Routes>
           {/* Admin Route  */}
-          <Route path="/" element={<></>} />
+          <Route
+            path="/"
+            element={
+              <Navigate
+                to={aToken ? "/admin-dashboard" : "/doctor-dashboard"}
+                replace
+              />
+            }
+          />
           <Route path="/admin-dashboard" element={<Dashboard />} />
           <Route path="/all-appointments" element={<Appointments />} />
           <Route path="/add-doctor" element={<AddDoctor />} />

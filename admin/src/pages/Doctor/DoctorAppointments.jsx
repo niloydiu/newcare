@@ -31,7 +31,7 @@ const DoctorAppointments = () => {
           <p>Fees</p>
           <p>Action</p>
         </div>
-        {appointments.reverse().map((item, index) => (
+        {[...appointments].reverse().map((item, index) => (
           <div
             key={index}
             className=" flex flex-wrap justify-between max-sm:gap-5 max-sm:text-base sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] gap-1 items-center text-gray-500 py-3 px-6 border-b border-gray-200 hover:bg-gray-50"
