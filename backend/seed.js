@@ -16,12 +16,7 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/newcare")
     process.exit(1);
   });
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Cloudinary configuration removed; using direct Unsplash image URLs.
 
 // Doctor Schema
 const doctorSchema = new mongoose.Schema(
@@ -45,20 +40,6 @@ const doctorSchema = new mongoose.Schema(
 
 const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
 
-const doctorsData = [
-  {
-    idNum: 1,
-    name: "Dr. Richard James",
-    speciality: "General physician",
-    degree: "MBBS",
-    experience: 4,
-    about: "Dr. James has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.",
-    fees: 50,
-    address: { line1: "17th Cross, Richmond", line2: "Circle, Ring Road, London" },
-  },
-  {
-    idNum: 2,
-    name: "Dr. Emily Larson",
     speciality: "Gynecologist",
     degree: "MBBS",
     experience: 3,
@@ -217,16 +198,14 @@ const seedDoctors = async () => {
         continue;
       }
 
-      console.log(`Uploading image for ${doc.name}...`);
-      const uploadResult = await cloudinary.uploader.upload(imagePath, {
-        folder: "newcare/doctors",
-      });
+      // Use a deterministic Unsplash image based on doctor id and gender placeholder
+      const unsplashUrl = `https://source.unsplash.com/featured/300x300?person,${doc.idNum}`;
 
       const doctorDoc = new Doctor({
         name: doc.name,
         email: email,
         password: defaultPassword,
-        image: uploadResult.secure_url,
+        image: unsplashUrl,
         speciality: doc.speciality,
         degree: doc.degree,
         experience: doc.experience,

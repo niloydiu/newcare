@@ -57,6 +57,10 @@ const appointmentSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  prescription: {
+    type: Object,
+    default: null,
+  },
 });
 
 const appointmentModel =
