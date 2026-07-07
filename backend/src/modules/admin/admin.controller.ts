@@ -40,7 +40,7 @@ export class AdminController {
     return this.adminService.addDoctor(body, file);
   }
 
-  @Post('all-doctors')
+  @Get('all-doctors')
   @UseGuards(AdminGuard)
   async allDoctors() {
     return this.adminService.allDoctors();
