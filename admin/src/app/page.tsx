@@ -218,16 +218,46 @@ function DoctorsTab() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [specialties, setSpecialties] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const initialForm = {
+    name: "",
+    email: "",
+    password: "",
+    speciality: "",
+    degree: "",
+    experience: "1",
+    about: "",
+    fees: "",
+    line1: "",
+    line2: "",
+    image: null as File | null,
+    available: true,
+  };
+
+  const [form, setForm] = useState(initialForm);
+
+  const fetchDoctors = async () => {
+    setLoading(true);
+    try {
+      const res = await api().get("/api/admin/all-doctors");
+      if (res.data.success) setDoctors(res.data.doctors);
+    } catch { }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetch = async () => {
+    fetchDoctors();
+    const fetchSpecialties = async () => {
       try {
-        const res = await api().get("/api/admin/all-doctors");
-        if (res.data.success) setDoctors(res.data.doctors);
+        const res = await api().get("/api/admin/all-specialties");
+        if (res.data.success) setSpecialties(res.data.specialties);
       } catch { }
-      setLoading(false);
     };
-    fetch();
+    fetchSpecialties();
   }, []);
 
   const filtered = doctors.filter(d =>
@@ -256,18 +286,103 @@ function DoctorsTab() {
     } catch { toast.error("Failed to delete"); }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append("name", form.name);
+      fd.append("email", form.email);
+      fd.append("speciality", form.speciality);
+      fd.append("degree", form.degree);
+      fd.append("experience", form.experience);
+      fd.append("about", form.about);
+      fd.append("fees", form.fees);
+      fd.append("address", JSON.stringify({ line1: form.line1, line2: form.line2 }));
+      fd.append("available", String(form.available));
+      if (form.image) {
+        fd.append("image", form.image);
+      }
+
+      if (editingDoc) {
+        fd.append("docId", editingDoc._id);
+        const res = await api().post("/api/admin/update-doctor", fd, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        if (res.data.success) {
+          toast.success("Doctor updated successfully");
+          setEditingDoc(null);
+          fetchDoctors();
+        } else {
+          toast.error(res.data.message || "Failed to update");
+        }
+      } else {
+        fd.append("password", form.password);
+        if (!form.image) {
+          toast.error("Please upload doctor image");
+          setSubmitting(false);
+          return;
+        }
+        const res = await api().post("/api/admin/add-doctor", fd, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        if (res.data.success) {
+          toast.success("Doctor added successfully");
+          setShowAddModal(false);
+          setForm(initialForm);
+          fetchDoctors();
+        } else {
+          toast.error(res.data.message || "Failed to add");
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Operation failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEdit = (doc: any) => {
+    setEditingDoc(doc);
+    setForm({
+      name: doc.name,
+      email: doc.email,
+      password: "",
+      speciality: doc.speciality,
+      degree: doc.degree,
+      experience: String(doc.experience),
+      about: doc.about,
+      fees: String(doc.fees),
+      line1: doc.address?.line1 || "",
+      line2: doc.address?.line2 || "",
+      image: null,
+      available: doc.available,
+    });
+  };
+
+  const openAdd = () => {
+    setForm(initialForm);
+    setEditingDoc(null);
+    setShowAddModal(true);
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)" }}>Doctors ({filtered.length})</h1>
-        <input
-          type="text"
-          placeholder="Search doctors..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input"
-          style={{ width: 240 }}
-        />
+        <div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)" }}>Doctors ({filtered.length})</h1>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <input
+            type="text"
+            placeholder="Search doctors..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input"
+            style={{ width: 240 }}
+          />
+          <button onClick={openAdd} className="btn-primary">Add Doctor</button>
+        </div>
       </div>
 
       {loading ? (
@@ -323,7 +438,8 @@ function DoctorsTab() {
                       }} />
                     </button>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "12px 16px", display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button onClick={() => openEdit(doc)} className="btn-primary" style={{ padding: "6px 12px", background: "rgba(99,102,241,0.1)", color: "var(--primary)" }}>Edit</button>
                     <button onClick={() => deleteDoctor(doc._id)} className="btn-danger">Delete</button>
                   </td>
                 </tr>
@@ -335,6 +451,106 @@ function DoctorsTab() {
           )}
         </div>
       )}
+
+      {/* Add / Edit Doctor Modal */}
+      {(showAddModal || editingDoc) && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px"
+        }}>
+          <div className="card" style={{
+            width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto",
+            padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem"
+          }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>{editingDoc ? "Edit Doctor Profile" : "Register New Doctor"}</h2>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Full Name *</label>
+                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="input" required />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Email Address *</label>
+                  <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input" required />
+                </div>
+              </div>
+
+              {!editingDoc && (
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Password *</label>
+                  <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="input" required minLength={8} />
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Specialty *</label>
+                  <select value={form.speciality} onChange={e => setForm({ ...form, speciality: e.target.value })} className="input" style={{ appearance: "auto" }} required>
+                    <option value="">Select Specialty</option>
+                    {specialties.map(s => <option key={s._id} value={s.name}>{s.name}</option>)}
+                    {/* fallback options in case no specialties in DB */}
+                    <option value="General physician">General physician</option>
+                    <option value="Gynecologist">Gynecologist</option>
+                    <option value="Dermatologist">Dermatologist</option>
+                    <option value="Pediatricians">Pediatricians</option>
+                    <option value="Neurologist">Neurologist</option>
+                    <option value="Gastroenterologist">Gastroenterologist</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Degree *</label>
+                  <input type="text" placeholder="e.g. MBBS, MD" value={form.degree} onChange={e => setForm({ ...form, degree: e.target.value })} className="input" required />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Experience *</label>
+                  <select value={form.experience} onChange={e => setForm({ ...form, experience: e.target.value })} className="input" style={{ appearance: "auto" }} required>
+                    {Array.from({ length: 15 }, (_, idx) => (
+                      <option key={idx + 1} value={String(idx + 1)}>{idx + 1} Years</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Consultation Fees ($) *</label>
+                  <input type="number" value={form.fees} onChange={e => setForm({ ...form, fees: e.target.value })} className="input" required />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>About Doctor *</label>
+                <textarea rows={3} value={form.about} onChange={e => setForm({ ...form, about: e.target.value })} className="input" required style={{ resize: "none" }} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Address Line 1 *</label>
+                  <input type="text" value={form.line1} onChange={e => setForm({ ...form, line1: e.target.value })} className="input" required />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Address Line 2</label>
+                  <input type="text" value={form.line2} onChange={e => setForm({ ...form, line2: e.target.value })} className="input" />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Doctor Image {!editingDoc && "*"}</label>
+                <input type="file" accept="image/*" onChange={e => setForm({ ...form, image: e.target.files ? e.target.files[0] : null })} className="input" required={!editingDoc} />
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
+                <button type="button" onClick={() => { setShowAddModal(false); setEditingDoc(null); }} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? "Saving..." : (editingDoc ? "Save Changes" : "Register Doctor")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -342,16 +558,22 @@ function DoctorsTab() {
 function AppointmentsTab() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reschedulingApp, setReschedulingApp] = useState<any | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchAppointments = async () => {
+    setLoading(true);
+    try {
+      const res = await api().get("/api/admin/appointments");
+      if (res.data.success) setAppointments(res.data.appointments.reverse());
+    } catch { }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await api().get("/api/admin/appointments");
-        if (res.data.success) setAppointments(res.data.appointments.reverse());
-      } catch { }
-      setLoading(false);
-    };
-    fetch();
+    fetchAppointments();
   }, []);
 
   const cancel = async (id: string) => {
@@ -362,6 +584,43 @@ function AppointmentsTab() {
         toast.success("Cancelled");
       }
     } catch { toast.error("Failed"); }
+  };
+
+  const deleteApp = async (id: string) => {
+    if (!confirm("Delete this appointment permanently?")) return;
+    try {
+      const res = await api().post("/api/admin/delete-appointment", { appointmentId: id });
+      if (res.data.success) {
+        setAppointments(prev => prev.filter(a => a._id !== id));
+        toast.success("Deleted");
+      }
+    } catch { toast.error("Failed to delete"); }
+  };
+
+  const handleReschedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDate || !newTime) return;
+    setSubmitting(true);
+    try {
+      const res = await api().post("/api/admin/reschedule-appointment", {
+        appointmentId: reschedulingApp._id,
+        newSlotDate: newDate,
+        newSlotTime: newTime,
+      });
+      if (res.data.success) {
+        toast.success("Appointment rescheduled successfully");
+        setReschedulingApp(null);
+        setNewDate("");
+        setNewTime("");
+        fetchAppointments();
+      } else {
+        toast.error(res.data.message || "Failed to reschedule");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to reschedule");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -376,7 +635,7 @@ function AppointmentsTab() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr style={{ background: "var(--bg-secondary)" }}>
-                {["Patient", "Doctor", "Specialty", "Date & Time", "Fee", "Status", "Action"].map(h => (
+                {["Patient", "Doctor", "Specialty", "Date & Time", "Fee", "Status", "Actions"].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -407,15 +666,49 @@ function AppointmentsTab() {
                       {a.cancelled ? "Cancelled" : a.isCompleted ? "Completed" : "Upcoming"}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "12px 16px", display: "flex", gap: "8px", alignItems: "center" }}>
                     {!a.cancelled && !a.isCompleted && (
-                      <button onClick={() => cancel(a._id)} className="btn-danger">Cancel</button>
+                      <>
+                        <button onClick={() => { setReschedulingApp(a); setNewDate(a.slotDate); setNewTime(a.slotTime); }} className="btn-primary" style={{ padding: "6px 12px", background: "rgba(99,102,241,0.1)", color: "var(--primary)" }}>Reschedule</button>
+                        <button onClick={() => cancel(a._id)} className="btn-danger">Cancel</button>
+                      </>
                     )}
+                    <button onClick={() => deleteApp(a._id)} className="btn-danger" style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444" }}>Delete</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {reschedulingApp && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px"
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: "400px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Reschedule Appointment</h2>
+            <form onSubmit={handleReschedule} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Date (e.g. 2026-07-15) *</label>
+                <input type="text" value={newDate} onChange={e => setNewDate(e.target.value)} className="input" placeholder="YYYY-MM-DD" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Time Slot (e.g. 10:00 AM) *</label>
+                <input type="text" value={newTime} onChange={e => setNewTime(e.target.value)} className="input" placeholder="HH:MM AM/PM" required />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
+                <button type="button" onClick={() => setReschedulingApp(null)} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? "Rescheduling..." : "Reschedule"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
@@ -501,38 +794,70 @@ function PatientsTab() {
   );
 }
 
+
 function SpecialtiesTab() {
   const [specialties, setSpecialties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", image: "", description: "" });
-  const [adding, setAdding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [editingSpecialty, setEditingSpecialty] = useState<any | null>(null);
+
+  const fetchSpecialties = async () => {
+    setLoading(true);
+    try {
+      const res = await api().get("/api/admin/all-specialties");
+      if (res.data.success) setSpecialties(res.data.specialties);
+    } catch { }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await api().get("/api/admin/all-specialties");
-        if (res.data.success) setSpecialties(res.data.specialties);
-      } catch { }
-      setLoading(false);
-    };
-    fetch();
+    fetchSpecialties();
   }, []);
 
-  const addSpecialty = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAdding(true);
+    setSubmitting(true);
     try {
-      const res = await api().post("/api/admin/add-specialty", form);
-      if (res.data.success) {
-        toast.success("Specialty added!");
-        setForm({ name: "", image: "", description: "" });
-        const updated = await api().get("/api/admin/all-specialties");
-        if (updated.data.success) setSpecialties(updated.data.specialties);
+      if (editingSpecialty) {
+        const res = await api().post("/api/admin/update-specialty", {
+          id: editingSpecialty._id,
+          ...form,
+        });
+        if (res.data.success) {
+          toast.success("Specialty updated!");
+          setEditingSpecialty(null);
+          setForm({ name: "", image: "", description: "" });
+          fetchSpecialties();
+        } else {
+          toast.error(res.data.message);
+        }
       } else {
-        toast.error(res.data.message);
+        const res = await api().post("/api/admin/add-specialty", form);
+        if (res.data.success) {
+          toast.success("Specialty added!");
+          setForm({ name: "", image: "", description: "" });
+          fetchSpecialties();
+        } else {
+          toast.error(res.data.message);
+        }
       }
-    } catch { toast.error("Failed to add"); }
-    setAdding(false);
+    } catch { toast.error("Failed to save"); }
+    setSubmitting(false);
+  };
+
+  const startEdit = (spec: any) => {
+    setEditingSpecialty(spec);
+    setForm({
+      name: spec.name,
+      image: spec.image || "",
+      description: spec.description,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingSpecialty(null);
+    setForm({ name: "", image: "", description: "" });
   };
 
   const deleteSpecialty = async (id: string) => {
@@ -550,10 +875,12 @@ function SpecialtiesTab() {
     <div>
       <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", marginBottom: "1.5rem" }}>Doctor Specialties</h1>
 
-      {/* Add form */}
+      {/* Form */}
       <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", marginBottom: "1.25rem" }}>Add New Specialty</h2>
-        <form onSubmit={addSpecialty} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: "1rem", alignItems: "end" }}>
+        <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", marginBottom: "1.25rem" }}>
+          {editingSpecialty ? "Edit Specialty" : "Add New Specialty"}
+        </h2>
+        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: "1rem", alignItems: "end" }}>
           <div>
             <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Name *</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="input" placeholder="e.g. Cardiologist" required />
@@ -566,9 +893,14 @@ function SpecialtiesTab() {
             <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Description *</label>
             <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input" placeholder="Short description" required />
           </div>
-          <button type="submit" disabled={adding} className="btn-primary">
-            {adding ? "Adding..." : "Add"}
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            {editingSpecialty && (
+              <button type="button" onClick={cancelEdit} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+            )}
+            <button type="submit" disabled={submitting} className="btn-primary">
+              {submitting ? "Saving..." : (editingSpecialty ? "Update" : "Add")}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -581,12 +913,15 @@ function SpecialtiesTab() {
             <div key={s._id} className="card" style={{ padding: "1.25rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                 <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)" }}>{s.name}</h3>
-                <button onClick={() => deleteSpecialty(s._id)} className="btn-danger" style={{ padding: "4px 10px" }}>×</button>
+                <div style={{ display: "flex", gap: "5px" }}>
+                  <button onClick={() => startEdit(s)} className="btn-primary" style={{ padding: "4px 8px", fontSize: "0.75rem", background: "rgba(99,102,241,0.1)", color: "var(--primary)" }}>Edit</button>
+                  <button onClick={() => deleteSpecialty(s._id)} className="btn-danger" style={{ padding: "4px 10px" }}>×</button>
+                </div>
               </div>
               <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{s.description}</p>
             </div>
           ))}
-          {specialties.length === 0 && <p style={{ color: "var(--text-muted)" }}>No specialties yet. Add one above.</p>}
+          {specialties.length === 0 && <p style={{ color: "var(--text-muted)" }}>No specialties yet. Add or edit above.</p>}
         </div>
       )}
     </div>
