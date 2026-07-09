@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Sun, Moon, Menu, X, Heart, User, LogOut, Calendar } from "lucide-react";
@@ -17,8 +18,23 @@ export default function Navbar() {
   const [dropOpen, setDropOpen] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("userData");
-    if (stored) setUser(JSON.parse(stored));
+    const checkUser = () => {
+      const stored = localStorage.getItem("userData");
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored));
+        } catch {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    };
+    checkUser();
+    window.addEventListener("authChange", checkUser);
+    return () => {
+      window.removeEventListener("authChange", checkUser);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -37,7 +53,7 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userData");
-    setUser(null);
+    window.dispatchEvent(new Event("authChange"));
     setDropOpen(false);
     toast.success("Logged out successfully");
     router.push("/");
@@ -61,18 +77,15 @@ export default function Navbar() {
     >
       <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "70px" }}>
         {/* Logo */}
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <div style={{
-            width: 36, height: 36,
-            background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-            borderRadius: "10px",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
-            <Heart size={18} color="white" fill="white" />
-          </div>
-          <span style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--text)" }}>
-            New<span className="gradient-text">Care</span>
-          </span>
+        <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+          <Image
+            src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617203/newcare_assets/newCare.png"
+            alt="NewCare Logo"
+            width={140}
+            height={36}
+            style={{ objectFit: "contain", height: "36px", width: "auto" }}
+            unoptimized
+          />
         </Link>
 
         {/* Desktop nav */}

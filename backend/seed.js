@@ -1,9 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { v2 as cloudinary } from "cloudinary";
-import path from "path";
-import fs from "fs";
 
 // Load Environment Variables
 dotenv.config();
@@ -15,8 +12,6 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/newcare")
     console.error("Database connection failed:", err);
     process.exit(1);
   });
-
-// Cloudinary configuration removed; using direct Unsplash image URLs.
 
 // Doctor Schema
 const doctorSchema = new mongoose.Schema(
@@ -40,6 +35,22 @@ const doctorSchema = new mongoose.Schema(
 
 const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
 
+const doctorsData = [
+  {
+    idNum: 1,
+    name: "Dr. Richard James",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617173/newcare_assets/doc1.png",
+    speciality: "General physician",
+    degree: "MBBS",
+    experience: 4,
+    about: "Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.",
+    fees: 50,
+    address: { line1: "17th Cross, Richmond", line2: "Circle, Ring Road, London" },
+  },
+  {
+    idNum: 2,
+    name: "Dr. Emily Larson",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617179/newcare_assets/doc2.png",
     speciality: "Gynecologist",
     degree: "MBBS",
     experience: 3,
@@ -50,6 +61,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 3,
     name: "Dr. Sarah Patel",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617180/newcare_assets/doc3.png",
     speciality: "Dermatologist",
     degree: "MBBS",
     experience: 1,
@@ -60,6 +72,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 4,
     name: "Dr. Christopher Lee",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617181/newcare_assets/doc4.png",
     speciality: "Pediatricians",
     degree: "MBBS",
     experience: 2,
@@ -70,6 +83,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 5,
     name: "Dr. Jennifer Garcia",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617182/newcare_assets/doc5.png",
     speciality: "Neurologist",
     degree: "MBBS",
     experience: 4,
@@ -80,6 +94,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 6,
     name: "Dr. Andrew Williams",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617182/newcare_assets/doc6.png",
     speciality: "Neurologist",
     degree: "MBBS",
     experience: 4,
@@ -90,6 +105,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 7,
     name: "Dr. Christopher Davis",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617183/newcare_assets/doc7.png",
     speciality: "General physician",
     degree: "MBBS",
     experience: 4,
@@ -100,6 +116,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 8,
     name: "Dr. Timothy White",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617184/newcare_assets/doc8.png",
     speciality: "Gynecologist",
     degree: "MBBS",
     experience: 3,
@@ -110,6 +127,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 9,
     name: "Dr. Ava Mitchell",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617185/newcare_assets/doc9.png",
     speciality: "Dermatologist",
     degree: "MBBS",
     experience: 1,
@@ -120,6 +138,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 10,
     name: "Dr. Jeffrey King",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617174/newcare_assets/doc10.png",
     speciality: "Pediatricians",
     degree: "MBBS",
     experience: 2,
@@ -130,6 +149,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 11,
     name: "Dr. Zoe Kelly",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617175/newcare_assets/doc11.png",
     speciality: "Neurologist",
     degree: "MBBS",
     experience: 4,
@@ -140,6 +160,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 12,
     name: "Dr. Patrick Harris",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617176/newcare_assets/doc12.png",
     speciality: "Neurologist",
     degree: "MBBS",
     experience: 4,
@@ -150,6 +171,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 13,
     name: "Dr. Chloe Evans",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617177/newcare_assets/doc13.png",
     speciality: "General physician",
     degree: "MBBS",
     experience: 4,
@@ -160,6 +182,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 14,
     name: "Dr. Ryan Martinez",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617177/newcare_assets/doc14.png",
     speciality: "Gynecologist",
     degree: "MBBS",
     experience: 3,
@@ -170,6 +193,7 @@ const Doctor = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);
   {
     idNum: 15,
     name: "Dr. Amelia Hill",
+    image: "https://res.cloudinary.com/dg5gwims9/image/upload/v1783617178/newcare_assets/doc15.png",
     speciality: "Dermatologist",
     degree: "MBBS",
     experience: 1,
@@ -187,25 +211,16 @@ const seedDoctors = async () => {
     const salt = await bcrypt.genSalt(10);
     const defaultPassword = await bcrypt.hash("doctor123", salt);
 
-    console.log("Uploading doctor images to Cloudinary and saving to database...");
+    console.log("Seeding doctors with Cloudinary URLs...");
     
     for (const doc of doctorsData) {
       const email = `doctor${doc.idNum}@newcare.com`;
-      const imagePath = path.resolve(`../frontend/src/assets/assets_frontend/doc${doc.idNum}.png`);
-
-      if (!fs.existsSync(imagePath)) {
-        console.error(`Image not found at ${imagePath}, skipping doctor ${doc.name}`);
-        continue;
-      }
-
-      // Use a deterministic Unsplash image based on doctor id and gender placeholder
-      const unsplashUrl = `https://source.unsplash.com/featured/300x300?person,${doc.idNum}`;
 
       const doctorDoc = new Doctor({
         name: doc.name,
         email: email,
         password: defaultPassword,
-        image: unsplashUrl,
+        image: doc.image,
         speciality: doc.speciality,
         degree: doc.degree,
         experience: doc.experience,

@@ -47,7 +47,15 @@ export class UserService {
     const user = await newUser.save();
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    return { success: true, token };
+    return {
+      success: true,
+      token,
+      userData: {
+        name: user.name,
+        email: user.email,
+        image: user.image || '',
+      },
+    };
   }
 
   async login(body: any) {
@@ -64,7 +72,15 @@ export class UserService {
     const isMatch = await bcrypt.compare(password, user.password);
     if (isMatch) {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-      return { success: true, token };
+      return {
+        success: true,
+        token,
+        userData: {
+          name: user.name,
+          email: user.email,
+          image: user.image || '',
+        },
+      };
     }
     throw new BadRequestException({ success: false, message: 'Invalid credentials' });
   }
@@ -302,7 +318,16 @@ export class UserService {
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    return { success: true, token, message: 'Authenticated successfully' };
+    return {
+      success: true,
+      token,
+      userData: {
+        name: user.name,
+        email: user.email,
+        image: user.image || '',
+      },
+      message: 'Authenticated successfully',
+    };
   }
 
   async addReview(userId: string, body: any) {

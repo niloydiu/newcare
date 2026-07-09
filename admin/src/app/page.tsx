@@ -62,19 +62,37 @@ function Sidebar({ activeTab, onTab, collapsed }: { activeTab: string; onTab: (t
     }}>
       {/* Logo */}
       <div style={{ padding: "1.5rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: "10px",
-            background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0
-          }}>
-            <Heart size={16} color="white" fill="white" />
-          </div>
-          {!collapsed && (
-            <span style={{ color: "white", fontWeight: 800, fontSize: "1.1rem", whiteSpace: "nowrap" }}>
-              NewCare <span style={{ color: "#6366f1" }}>Admin</span>
-            </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {collapsed ? (
+            <div style={{
+              width: 34, height: 34, borderRadius: "10px",
+              background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0, color: "white", fontWeight: "bold"
+            }}>
+              NC
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Image
+                src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617203/newcare_assets/newCare.png"
+                alt="NewCare Logo"
+                width={120}
+                height={30}
+                style={{ objectFit: "contain", height: "30px", width: "auto" }}
+                unoptimized
+              />
+              <span style={{
+                background: "rgba(99,102,241,0.15)",
+                color: "#818cf8",
+                padding: "2px 8px",
+                borderRadius: "20px",
+                fontSize: "0.7rem",
+                fontWeight: 700
+              }}>
+                Admin
+              </span>
+            </div>
           )}
         </div>
       </div>

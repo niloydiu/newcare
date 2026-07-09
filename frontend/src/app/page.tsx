@@ -36,6 +36,11 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [featuredDoctors, setFeaturedDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
 
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -68,7 +73,7 @@ export default function Home() {
       {/* ── Hero Section ── */}
       <section style={{
         background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #8b5cf6 100%)",
-        padding: "5rem 0 7rem",
+        padding: "5rem 0 5rem",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -78,8 +83,15 @@ export default function Home() {
           backgroundImage: "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 40%)",
         }} />
 
-        <div className="container" style={{ position: "relative" }}>
-          <div style={{ maxWidth: 600, color: "white" }}>
+        <div className="container" style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "3rem",
+          flexWrap: "wrap"
+        }}>
+          <div style={{ flex: "1 1 500px", color: "white", zIndex: 2 }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: "8px",
               background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)",
@@ -98,9 +110,27 @@ export default function Home() {
                 padding: "2px 12px", fontStyle: "italic"
               }}>60 seconds</span>
             </h1>
-            <p style={{ fontSize: "1.1rem", opacity: 0.9, lineHeight: 1.7, marginBottom: "2rem" }}>
+            <p style={{ fontSize: "1.1rem", opacity: 0.9, lineHeight: 1.7, marginBottom: "1rem" }}>
               Connect with verified, expert doctors across 10+ specialties. Convenient online booking, real patient reviews, and flexible scheduling.
             </p>
+
+            {/* Group profiles decoration */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "1.5rem 0", flexWrap: "wrap" }}>
+              <div style={{ position: "relative", width: 110, height: 38 }}>
+                <Image
+                  src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617193/newcare_assets/group_profiles.png"
+                  alt="Group profiles"
+                  fill
+                  style={{ objectFit: "contain" }}
+                  unoptimized
+                />
+              </div>
+              <p style={{ fontSize: "0.88rem", opacity: 0.9, lineHeight: 1.4 }}>
+                Simply browse through our extensive list of trusted doctors,
+                <br className="hidden-mobile" />
+                schedule your appointment hassle-free.
+              </p>
+            </div>
 
             {/* Search bar */}
             <div style={{
@@ -142,6 +172,29 @@ export default function Home() {
                 Search
               </Link>
             </div>
+          </div>
+
+          {/* Hero Image */}
+          <div className="hidden-mobile" style={{
+            flex: "1 1 400px",
+            position: "relative",
+            height: "480px",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 1,
+            marginTop: "2rem",
+            marginBottom: "-5rem"
+          }}>
+            <Image
+              src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617195/newcare_assets/header_img.png"
+              alt="NewCare Hero"
+              width={420}
+              height={480}
+              style={{ objectFit: "contain", maxHeight: "100%", width: "auto" }}
+              priority
+              unoptimized
+            />
           </div>
         </div>
       </section>
@@ -350,7 +403,7 @@ export default function Home() {
             Join thousands of patients already using NewCare
           </p>
           <Link
-            href="/login"
+            href={isLoggedIn ? "/doctors" : "/login"}
             style={{
               display: "inline-flex", alignItems: "center", gap: "8px",
               background: "white", color: "#0ea5e9",

@@ -10,7 +10,10 @@ const api = axios.create({
 // Attach token on each request
 api.interceptors.request.use((config) => {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.token = token;
+  }
   return config;
 });
 

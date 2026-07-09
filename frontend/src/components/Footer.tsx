@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Heart, Mail, Phone, MapPin } from "lucide-react";
 
 export default function Footer() {
@@ -20,18 +21,15 @@ export default function Footer() {
         }}>
           {/* Brand */}
           <div>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", marginBottom: "1rem" }}>
-              <div style={{
-                width: 32, height: 32,
-                background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-                borderRadius: "8px",
-                display: "flex", alignItems: "center", justifyContent: "center"
-              }}>
-                <Heart size={15} color="white" fill="white" />
-              </div>
-              <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text)" }}>
-                New<span className="gradient-text">Care</span>
-              </span>
+            <Link href="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", marginBottom: "1rem" }}>
+              <Image
+                src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617203/newcare_assets/newCare.png"
+                alt="NewCare Logo"
+                width={120}
+                height={30}
+                style={{ objectFit: "contain", height: "30px", width: "auto" }}
+                unoptimized
+              />
             </Link>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", lineHeight: 1.7, maxWidth: 260 }}>
               Your trusted partner in healthcare. Find and book appointments with the best doctors near you.

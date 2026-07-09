@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { Heart, Mail, Lock, Eye, EyeOff, Shield } from "lucide-react";
 import axios from "axios";
@@ -55,18 +56,18 @@ export default function AdminLogin() {
       <div style={{ width: "100%", maxWidth: 420, position: "relative" }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <div style={{
-            width: 56, height: 56,
-            background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-            borderRadius: "16px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 1rem",
-            boxShadow: "0 8px 32px rgba(99,102,241,0.4)",
-          }}>
-            <Heart size={26} color="white" fill="white" />
+          <div style={{ marginBottom: "1rem" }}>
+            <Image
+              src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617203/newcare_assets/newCare.png"
+              alt="NewCare Logo"
+              width={160}
+              height={40}
+              style={{ objectFit: "contain", height: "40px", width: "auto", margin: "0 auto", filter: "brightness(0) invert(1)" }}
+              unoptimized
+            />
           </div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 900, color: "white", marginBottom: "0.4rem" }}>
-            NewCare Admin
+            Admin Panel
           </h1>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.9rem" }}>
             Secure administrator access

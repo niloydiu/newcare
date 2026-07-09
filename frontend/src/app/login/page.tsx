@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, Heart, Mail, Lock, User } from "lucide-react";
 import api from "@/lib/api";
@@ -15,6 +16,57 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+
+  const handleGoogleLogin = async (response: any) => {
+    setLoading(true);
+    try {
+      const res = await api.post("/api/user/google-auth", {
+        credential: response.credential,
+      });
+      if (res.data.success) {
+        localStorage.setItem("token", res.data.token);
+        if (res.data.userData) localStorage.setItem("userData", JSON.stringify(res.data.userData));
+        window.dispatchEvent(new Event("authChange"));
+        toast.success("Welcome back!");
+        router.push("/");
+      } else {
+        toast.error(res.data.message || "Google authentication failed");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Google login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if ((window as any).google) {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com";
+        (window as any).google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleLogin,
+        });
+        const container = document.getElementById("googleSignInButton");
+        if (container) {
+          (window as any).google.accounts.id.renderButton(
+            container,
+            { theme: "outline", size: "large", width: 340 }
+          );
+        }
+      }
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +90,7 @@ export default function LoginPage() {
       if (res.data.success) {
         localStorage.setItem("token", res.data.token);
         if (res.data.userData) localStorage.setItem("userData", JSON.stringify(res.data.userData));
+        window.dispatchEvent(new Event("authChange"));
         toast.success(mode === "login" ? "Welcome back!" : "Account created successfully!");
         router.push("/");
       } else {
@@ -78,18 +131,15 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 440, position: "relative", zIndex: 1 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none", marginBottom: "1rem" }}>
-            <div style={{
-              width: 40, height: 40,
-              background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-              borderRadius: "12px",
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              <Heart size={20} color="white" fill="white" />
-            </div>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)" }}>
-              New<span className="gradient-text">Care</span>
-            </span>
+          <Link href="/" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", marginBottom: "1rem" }}>
+            <Image
+              src="https://res.cloudinary.com/dg5gwims9/image/upload/v1783617203/newcare_assets/newCare.png"
+              alt="NewCare Logo"
+              width={150}
+              height={38}
+              style={{ objectFit: "contain", height: "38px", width: "auto" }}
+              unoptimized
+            />
           </Link>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--text)", marginBottom: "0.4rem" }}>
             {mode === "login" ? "Welcome back" : "Create account"}
@@ -219,6 +269,16 @@ export default function LoginPage() {
               {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
             </button>
           </form>
+
+          <div style={{ display: "flex", alignItems: "center", margin: "1.25rem 0", gap: "10px" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>or continue with</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "1rem" }}>
+            <div id="googleSignInButton" />
+          </div>
 
           <div style={{ textAlign: "center", marginTop: "1.25rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
