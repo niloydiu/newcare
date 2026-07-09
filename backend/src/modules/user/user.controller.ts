@@ -2,10 +2,8 @@ import {
   Controller,
   Post,
   Get,
-  Query,
   Body,
   Req,
-  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -39,9 +37,9 @@ export class UserController {
     return this.userService.getGoogleOAuthUrl();
   }
 
-  @Get('google-callback')
-  async googleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: any) {
-    return this.userService.handleGoogleCallback(code, state, res);
+  @Post('google-auth-token')
+  async googleAuthWithToken(@Body() body: any) {
+    return this.userService.googleAuthWithAccessToken(body);
   }
 
   @Get('get-profile')

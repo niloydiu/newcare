@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -10,41 +10,47 @@ import api from "@/lib/api";
 
 type Mode = "login" | "register";
 
-// Separate component that uses useSearchParams (needs Suspense)
-function GoogleCallbackHandler() {
+// Handles the Google OAuth2 implicit flow callback
+// Google returns: #access_token=xxx&token_type=Bearer&expires_in=3599&scope=...
+function GoogleOAuthCallbackHandler() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const userDataRaw = searchParams.get("userData");
-    const error = searchParams.get("error");
+    if (typeof window === "undefined") return;
 
-    if (token) {
-      localStorage.setItem("token", token);
-      if (userDataRaw) {
-        try {
-          localStorage.setItem("userData", JSON.stringify(JSON.parse(decodeURIComponent(userDataRaw))));
-        } catch {}
+    const hash = window.location.hash;
+    if (!hash || !hash.includes("access_token")) return;
+
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get("access_token");
+
+    if (!accessToken) return;
+
+    // Clear hash from URL immediately to prevent re-processing
+    window.history.replaceState(null, "", window.location.pathname);
+
+    // Exchange access token with backend
+    const exchangeToken = async () => {
+      try {
+        const res = await api.post("/api/user/google-auth-token", { accessToken });
+        if (res.data.success) {
+          localStorage.setItem("token", res.data.token);
+          if (res.data.userData) {
+            localStorage.setItem("userData", JSON.stringify(res.data.userData));
+          }
+          window.dispatchEvent(new Event("authChange"));
+          toast.success("Welcome! Signed in with Google.");
+          router.replace("/");
+        } else {
+          toast.error(res.data.message || "Google sign-in failed.");
+        }
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Google sign-in failed. Please try again.");
       }
-      window.dispatchEvent(new Event("authChange"));
-      toast.success("Welcome! Signed in with Google.");
-      router.replace("/");
-      return;
-    }
+    };
 
-    if (error) {
-      const messages: Record<string, string> = {
-        google_auth_failed: "Google sign-in was cancelled.",
-        token_exchange_failed: "Google authentication failed. Please try again.",
-        email_not_verified: "Your Google email is not verified.",
-        server_error: "Server error during Google sign-in.",
-        invalid_token: "Invalid Google token. Please try again.",
-      };
-      toast.error(messages[error] || "Google sign-in failed.");
-      router.replace("/login");
-    }
-  }, [searchParams, router]);
+    exchangeToken();
+  }, [router]);
 
   return null;
 }
@@ -54,21 +60,23 @@ function LoginForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
   const handleGoogleOAuth = useCallback(async () => {
-    setLoading(true);
+    setGoogleLoading(true);
     try {
       const res = await api.get("/api/user/google-oauth-url");
       if (res.data.success && res.data.url) {
+        // Full page redirect to Google — implicit flow, no secret needed
         window.location.href = res.data.url;
       } else {
         toast.error("Could not initiate Google sign-in.");
-        setLoading(false);
+        setGoogleLoading(false);
       }
     } catch {
       toast.error("Failed to start Google sign-in. Please try again.");
-      setLoading(false);
+      setGoogleLoading(false);
     }
   }, []);
 
@@ -268,9 +276,9 @@ function LoginForm() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="btn-primary"
-              style={{ justifyContent: "center", width: "100%", padding: "14px", fontSize: "0.95rem", marginTop: "0.5rem", opacity: loading ? 0.7 : 1 }}
+              style={{ justifyContent: "center", width: "100%", padding: "14px", fontSize: "0.95rem", marginTop: "0.5rem", opacity: (loading || googleLoading) ? 0.7 : 1 }}
             >
               {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
             </button>
@@ -282,12 +290,12 @@ function LoginForm() {
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           </div>
 
-          {/* Custom Google OAuth2 button — redirect flow, no JS origin restriction */}
+          {/* Google OAuth2 Button — uses implicit flow, no client secret or JS origin whitelist needed */}
           <button
             type="button"
             id="google-signin-btn"
             onClick={handleGoogleOAuth}
-            disabled={loading}
+            disabled={loading || googleLoading}
             style={{
               display: "flex",
               alignItems: "center",
@@ -301,20 +309,20 @@ function LoginForm() {
               color: "var(--text)",
               fontSize: "0.9rem",
               fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: (loading || googleLoading) ? "not-allowed" : "pointer",
               transition: "all 0.2s ease",
-              opacity: loading ? 0.7 : 1,
+              opacity: (loading || googleLoading) ? 0.7 : 1,
               marginBottom: "1rem",
             }}
           >
-            {/* Google "G" Logo */}
+            {/* Google "G" Logo SVG */}
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            Continue with Google
+            {googleLoading ? "Redirecting to Google..." : "Continue with Google"}
           </button>
 
           <div style={{ textAlign: "center", marginTop: "1.25rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
@@ -344,7 +352,7 @@ export default function LoginPage() {
   return (
     <>
       <Suspense fallback={null}>
-        <GoogleCallbackHandler />
+        <GoogleOAuthCallbackHandler />
       </Suspense>
       <LoginForm />
     </>
