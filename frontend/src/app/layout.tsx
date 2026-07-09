@@ -36,7 +36,7 @@ export default function RootLayout({
             }}
           />
           <Navbar />
-          <main>{children}</main>
+          <main style={{ position: "relative", zIndex: 1 }}>{children}</main>
           <Footer />
         </ThemeProvider>
       </body>

@@ -114,6 +114,7 @@ export default function LoginPage() {
       justifyContent: "center",
       background: "var(--bg)",
       padding: "2rem",
+      position: "relative",
     }}>
       {/* Background decoration */}
       <div style={{
@@ -122,16 +123,16 @@ export default function LoginPage() {
         <div style={{
           position: "absolute", top: "-20%", right: "-10%", width: 600, height: 600,
           background: "radial-gradient(circle, rgba(14,165,233,0.08) 0%, transparent 70%)",
-          borderRadius: "50%"
+          borderRadius: "50%", pointerEvents: "none"
         }} />
         <div style={{
           position: "absolute", bottom: "-20%", left: "-10%", width: 500, height: 500,
           background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
-          borderRadius: "50%"
+          borderRadius: "50%", pointerEvents: "none"
         }} />
       </div>
 
-      <div style={{ width: "100%", maxWidth: 440, position: "relative", zIndex: 1 }}>
+      <div style={{ width: "100%", maxWidth: 440, position: "relative", zIndex: 10 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <Link href="/" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", marginBottom: "1rem" }}>
