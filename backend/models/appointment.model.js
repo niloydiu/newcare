@@ -45,6 +45,22 @@ const appointmentSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  rating: {
+    type: Number,
+    default: 0,
+  },
+  review: {
+    type: String,
+    default: "",
+  },
+  isReviewed: {
+    type: Boolean,
+    default: false,
+  },
+  prescription: {
+    type: Object,
+    default: null,
+  },
 });
 
 const appointmentModel =
