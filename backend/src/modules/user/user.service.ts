@@ -330,6 +330,86 @@ export class UserService {
     };
   }
 
+  getGoogleOAuthUrl() {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com';
+    const redirectUri = 'https://newcarebackend.vercel.app/api/user/google-callback';
+    const scope = 'openid email profile';
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', scope);
+    url.searchParams.set('access_type', 'offline');
+    url.searchParams.set('prompt', 'select_account');
+    return { success: true, url: url.toString() };
+  }
+
+  async handleGoogleCallback(code: string, state: string, res: any) {
+    const frontendUrl = 'https://newcare.vercel.app';
+    if (!code) {
+      return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+    }
+
+    try {
+      const clientId = process.env.GOOGLE_CLIENT_ID || '1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com';
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const redirectUri = 'https://newcarebackend.vercel.app/api/user/google-callback';
+
+      // Exchange code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret || '',
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const err = await tokenResponse.json();
+        console.error('Token exchange failed:', err);
+        return res.redirect(`${frontendUrl}/login?error=token_exchange_failed`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      const idToken = tokenData.id_token;
+
+      // Verify the id_token
+      const verifyResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      if (!verifyResponse.ok) {
+        return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+      }
+
+      const payload = await verifyResponse.json();
+      const { email, name, picture, email_verified } = payload;
+
+      if (email_verified !== 'true' && email_verified !== true) {
+        return res.redirect(`${frontendUrl}/login?error=email_not_verified`);
+      }
+
+      let user = await this.userModel.findOne({ email });
+      if (!user) {
+        const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(randomPassword, salt);
+        const newUser = new this.userModel({ name, email, password: hashedPassword, image: picture || '' });
+        user = await newUser.save();
+      }
+
+      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      const userData = encodeURIComponent(JSON.stringify({ name: user.name, email: user.email, image: user.image || '' }));
+
+      // Redirect back to frontend with token
+      return res.redirect(`${frontendUrl}/login?token=${jwtToken}&userData=${userData}`);
+    } catch (err) {
+      console.error('Google callback error:', err);
+      return res.redirect(`${frontendUrl}/login?error=server_error`);
+    }
+  }
+
   async addReview(userId: string, body: any) {
     const { appointmentId, rating, review } = body;
     if (!appointmentId || !rating) {

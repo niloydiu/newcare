@@ -1,74 +1,75 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, Heart, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import api from "@/lib/api";
 
 type Mode = "login" | "register";
 
-export default function LoginPage() {
+// Separate component that uses useSearchParams (needs Suspense)
+function GoogleCallbackHandler() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const token = searchParams.get("token");
+    const userDataRaw = searchParams.get("userData");
+    const error = searchParams.get("error");
+
+    if (token) {
+      localStorage.setItem("token", token);
+      if (userDataRaw) {
+        try {
+          localStorage.setItem("userData", JSON.stringify(JSON.parse(decodeURIComponent(userDataRaw))));
+        } catch {}
+      }
+      window.dispatchEvent(new Event("authChange"));
+      toast.success("Welcome! Signed in with Google.");
+      router.replace("/");
+      return;
+    }
+
+    if (error) {
+      const messages: Record<string, string> = {
+        google_auth_failed: "Google sign-in was cancelled.",
+        token_exchange_failed: "Google authentication failed. Please try again.",
+        email_not_verified: "Your Google email is not verified.",
+        server_error: "Server error during Google sign-in.",
+        invalid_token: "Invalid Google token. Please try again.",
+      };
+      toast.error(messages[error] || "Google sign-in failed.");
+      router.replace("/login");
+    }
+  }, [searchParams, router]);
+
+  return null;
+}
+
+function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
-  const handleGoogleLogin = async (response: any) => {
+  const handleGoogleOAuth = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.post("/api/user/google-auth", {
-        credential: response.credential,
-      });
-      if (res.data.success) {
-        localStorage.setItem("token", res.data.token);
-        if (res.data.userData) localStorage.setItem("userData", JSON.stringify(res.data.userData));
-        window.dispatchEvent(new Event("authChange"));
-        toast.success("Welcome back!");
-        router.push("/");
+      const res = await api.get("/api/user/google-oauth-url");
+      if (res.data.success && res.data.url) {
+        window.location.href = res.data.url;
       } else {
-        toast.error(res.data.message || "Google authentication failed");
+        toast.error("Could not initiate Google sign-in.");
+        setLoading(false);
       }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Google login failed. Please try again.");
-    } finally {
+    } catch {
+      toast.error("Failed to start Google sign-in. Please try again.");
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const initializeGoogle = () => {
-      if ((window as any).google) {
-        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com";
-        (window as any).google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleLogin,
-        });
-        const container = document.getElementById("googleSignInButton");
-        if (container) {
-          (window as any).google.accounts.id.renderButton(
-            container,
-            { theme: "outline", size: "large", width: 340 }
-          );
-        }
-      }
-    };
-
-    if (document.getElementById("google-gsi-client")) {
-      initializeGoogle();
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-gsi-client";
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogle;
-    document.body.appendChild(script);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,6 +173,7 @@ export default function LoginPage() {
             {(["login", "register"] as Mode[]).map((m) => (
               <button
                 key={m}
+                type="button"
                 onClick={() => setMode(m)}
                 style={{
                   flex: 1,
@@ -280,13 +282,45 @@ export default function LoginPage() {
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "1rem" }}>
-            <div id="googleSignInButton" />
-          </div>
+          {/* Custom Google OAuth2 button — redirect flow, no JS origin restriction */}
+          <button
+            type="button"
+            id="google-signin-btn"
+            onClick={handleGoogleOAuth}
+            disabled={loading}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              width: "100%",
+              padding: "12px 16px",
+              borderRadius: "10px",
+              border: "1px solid var(--border)",
+              background: "var(--bg-secondary)",
+              color: "var(--text)",
+              fontSize: "0.9rem",
+              fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "all 0.2s ease",
+              opacity: loading ? 0.7 : 1,
+              marginBottom: "1rem",
+            }}
+          >
+            {/* Google "G" Logo */}
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Continue with Google
+          </button>
 
           <div style={{ textAlign: "center", marginTop: "1.25rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             <button
+              type="button"
               onClick={() => setMode(mode === "login" ? "register" : "login")}
               style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}
             >
@@ -296,12 +330,23 @@ export default function LoginPage() {
         </div>
 
         <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-          By continuing, you agree to NewCare's{" "}
+          By continuing, you agree to NewCare&apos;s{" "}
           <a href="#" style={{ color: "var(--primary)", textDecoration: "none" }}>Terms of Service</a>{" "}
           and{" "}
           <a href="#" style={{ color: "var(--primary)", textDecoration: "none" }}>Privacy Policy</a>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <GoogleCallbackHandler />
+      </Suspense>
+      <LoginForm />
+    </>
   );
 }
