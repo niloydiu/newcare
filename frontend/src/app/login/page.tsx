@@ -40,13 +40,7 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-
-    script.onload = () => {
+    const initializeGoogle = () => {
       if ((window as any).google) {
         const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com";
         (window as any).google.accounts.id.initialize({
@@ -63,10 +57,19 @@ export default function LoginPage() {
       }
     };
 
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, [mode]);
+    if (document.getElementById("google-gsi-client")) {
+      initializeGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-gsi-client";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.body.appendChild(script);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
