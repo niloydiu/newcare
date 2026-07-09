@@ -8,8 +8,6 @@ const DoctorDashboard = () => {
     dToken,
     getDashData,
     dashData,
-    setDashData,
-    backendUrl,
     completeAppointment,
     cancelAppointment,
   } = useContext(DoctorContext);

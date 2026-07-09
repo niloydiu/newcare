@@ -123,8 +123,6 @@ const Appointment = () => {
 
       const slotDate = day + "_" + month + "_" + year;
 
-      console.log("Sending appointment data:", { docId, slotDate, slotTime });
-
       const { data } = await axios.post(
         backendUrl + "/api/user/book-appointment",
         { docId, slotDate, slotTime },
@@ -153,10 +151,6 @@ const Appointment = () => {
   useEffect(() => {
     getAvailableSlot();
   }, [docInfo]);
-
-  useEffect(() => {
-    console.log(doctorsSlot);
-  }, [doctorsSlot]);
 
   return (
     docInfo && (

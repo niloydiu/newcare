@@ -83,7 +83,7 @@ const Login = () => {
           <input
             className=" border border-zinc-300 rounded w-full p-2 mt-1"
             required
-            type="text"
+            type="email"
             placeholder=""
             onChange={(e) => setEmail(e.target.value)}
             value={email}
@@ -94,7 +94,7 @@ const Login = () => {
           <input
             className=" border border-zinc-300 rounded w-full p-2 mt-1"
             required
-            type="text"
+            type="password"
             placeholder=""
             onChange={(e) => setPassword(e.target.value)}
             value={password}

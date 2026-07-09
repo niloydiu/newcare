@@ -75,7 +75,12 @@ const Myappointments = () => {
         My Appointments
       </p>
       <div>
-        {appointments.slice(0, 3).map((item, index) => (
+        {appointments.length === 0 && (
+          <p className=" py-6 text-sm text-zinc-500">
+            You have no appointments yet.
+          </p>
+        )}
+        {appointments.map((item, index) => (
           <div
             key={index}
             className=" grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b border-zinc-300"
