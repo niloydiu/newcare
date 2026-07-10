@@ -331,7 +331,7 @@ export class UserService {
   }
 
   getGoogleOAuthUrl() {
-    const clientId = process.env.GOOGLE_CLIENT_ID || '1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com';
+    const clientId = (process.env.GOOGLE_CLIENT_ID || '1089608603127-v3lig04qohrvth72o4gefodv559gh936.apps.googleusercontent.com').trim();
     const redirectUri = `https://newcare.vercel.app/login`;
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', clientId);
