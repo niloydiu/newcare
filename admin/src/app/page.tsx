@@ -581,6 +581,17 @@ function AppointmentsTab() {
   const [newTime, setNewTime] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // New states for booking new appointment
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [patientsList, setPatientsList] = useState<any[]>([]);
+  const [bookForm, setBookForm] = useState({
+    userId: "",
+    docId: "",
+    slotDate: "",
+    slotTime: "",
+  });
+
   const fetchAppointments = async () => {
     setLoading(true);
     try {
@@ -590,8 +601,19 @@ function AppointmentsTab() {
     setLoading(false);
   };
 
+  const fetchDoctorsAndPatients = async () => {
+    try {
+      const docsRes = await api().get("/api/admin/all-doctors");
+      if (docsRes.data.success) setDoctorsList(docsRes.data.doctors);
+      
+      const patientsRes = await api().get("/api/admin/all-patients");
+      if (patientsRes.data.success) setPatientsList(patientsRes.data.patients);
+    } catch { }
+  };
+
   useEffect(() => {
     fetchAppointments();
+    fetchDoctorsAndPatients();
   }, []);
 
   const cancel = async (id: string) => {
@@ -641,11 +663,38 @@ function AppointmentsTab() {
     }
   };
 
+  const handleBookAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookForm.userId || !bookForm.docId || !bookForm.slotDate || !bookForm.slotTime) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api().post("/api/admin/add-appointment", bookForm);
+      if (res.data.success) {
+        toast.success("Appointment booked successfully");
+        setShowAddModal(false);
+        setBookForm({ userId: "", docId: "", slotDate: "", slotTime: "" });
+        fetchAppointments();
+      } else {
+        toast.error(res.data.message || "Failed to book");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Booking failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", marginBottom: "1.5rem" }}>
-        All Appointments ({appointments.length})
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", margin: 0 }}>
+          All Appointments ({appointments.length})
+        </h1>
+        <button onClick={() => setShowAddModal(true)} className="btn-primary">Book Appointment</button>
+      </div>
       {loading ? (
         <p style={{ color: "var(--text-secondary)" }}>Loading...</p>
       ) : (
@@ -729,6 +778,54 @@ function AppointmentsTab() {
           </div>
         </div>
       )}
+
+      {/* Book Appointment Modal */}
+      {showAddModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px"
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: "450px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Book New Appointment</h2>
+            <form onSubmit={handleBookAppointment} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Select Patient *</label>
+                <select value={bookForm.userId} onChange={e => setBookForm({ ...bookForm, userId: e.target.value })} className="input" required>
+                  <option value="">-- Choose Patient --</option>
+                  {patientsList.map(p => (
+                    <option key={p._id} value={p._id}>{p.name} ({p.email})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Select Doctor *</label>
+                <select value={bookForm.docId} onChange={e => setBookForm({ ...bookForm, docId: e.target.value })} className="input" required>
+                  <option value="">-- Choose Doctor --</option>
+                  {doctorsList.map(d => (
+                    <option key={d._id} value={d._id}>{d.name} ({d.speciality})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Date (e.g. 2026-07-15) *</label>
+                <input type="text" value={bookForm.slotDate} onChange={e => setBookForm({ ...bookForm, slotDate: e.target.value })} className="input" placeholder="YYYY-MM-DD" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Time Slot (e.g. 10:00 AM) *</label>
+                <input type="text" value={bookForm.slotTime} onChange={e => setBookForm({ ...bookForm, slotTime: e.target.value })} className="input" placeholder="HH:MM AM/PM" required />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? "Booking..." : "Book Appointment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -737,16 +834,32 @@ function PatientsTab() {
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<any | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const initialForm = {
+    name: "",
+    email: "",
+    password: "",
+    gender: "Not Selected",
+    dob: "",
+    phone: "",
+  };
+
+  const [form, setForm] = useState(initialForm);
+
+  const fetchPatients = async () => {
+    setLoading(true);
+    try {
+      const res = await api().get("/api/admin/all-patients");
+      if (res.data.success) setPatients(res.data.patients);
+    } catch { }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await api().get("/api/admin/all-patients");
-        if (res.data.success) setPatients(res.data.patients);
-      } catch { }
-      setLoading(false);
-    };
-    fetch();
+    fetchPatients();
   }, []);
 
   const filtered = patients.filter(p =>
@@ -765,11 +878,71 @@ function PatientsTab() {
     } catch { toast.error("Failed"); }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      if (editingPatient) {
+        const res = await api().post("/api/admin/update-patient", {
+          userId: editingPatient._id,
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          gender: form.gender,
+          dob: form.dob,
+          phone: form.phone,
+        });
+        if (res.data.success) {
+          toast.success("Patient updated successfully");
+          setEditingPatient(null);
+          fetchPatients();
+        } else {
+          toast.error(res.data.message || "Failed to update");
+        }
+      } else {
+        const res = await api().post("/api/admin/add-patient", form);
+        if (res.data.success) {
+          toast.success("Patient added successfully");
+          setShowAddModal(false);
+          setForm(initialForm);
+          fetchPatients();
+        } else {
+          toast.error(res.data.message || "Failed to add");
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Operation failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEdit = (p: any) => {
+    setEditingPatient(p);
+    setForm({
+      name: p.name || "",
+      email: p.email || "",
+      password: "",
+      gender: p.gender || "Not Selected",
+      dob: p.dob || "",
+      phone: p.phone || "",
+    });
+  };
+
+  const openAdd = () => {
+    setForm(initialForm);
+    setEditingPatient(null);
+    setShowAddModal(true);
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)" }}>Patients ({filtered.length})</h1>
-        <input type="text" placeholder="Search patients..." value={search} onChange={e => setSearch(e.target.value)} className="input" style={{ width: 240 }} />
+        <div style={{ display: "flex", gap: "10px" }}>
+          <input type="text" placeholder="Search patients..." value={search} onChange={e => setSearch(e.target.value)} className="input" style={{ width: 240 }} />
+          <button onClick={openAdd} className="btn-primary">Add Patient</button>
+        </div>
       </div>
       {loading ? <p style={{ color: "var(--text-secondary)" }}>Loading...</p> : (
         <div className="card" style={{ overflow: "hidden" }}>
@@ -798,7 +971,8 @@ function PatientsTab() {
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--text-secondary)", textTransform: "capitalize" }}>{p.gender || "—"}</td>
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{p.dob || "—"}</td>
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>{p.phone || "—"}</td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "12px 16px", display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button onClick={() => openEdit(p)} className="btn-primary" style={{ padding: "6px 12px", background: "rgba(99,102,241,0.1)", color: "var(--primary)" }}>Edit</button>
                     <button onClick={() => deletePatient(p._id)} className="btn-danger">Delete</button>
                   </td>
                 </tr>
@@ -806,6 +980,63 @@ function PatientsTab() {
             </tbody>
           </table>
           {filtered.length === 0 && <p style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>No patients found</p>}
+        </div>
+      )}
+
+      {/* Add / Edit Patient Modal */}
+      {(showAddModal || editingPatient) && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px"
+        }}>
+          <div className="card" style={{
+            width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto",
+            padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem"
+          }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>{editingPatient ? "Edit Patient Details" : "Register New Patient"}</h2>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Full Name *</label>
+                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="input" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Email Address *</label>
+                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="input" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>
+                  Password {editingPatient ? "(Leave blank to keep current)" : "*"}
+                </label>
+                <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="input" required={!editingPatient} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Gender</label>
+                  <select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })} className="input">
+                    <option value="Not Selected">Not Selected</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>DOB (e.g. YYYY-MM-DD)</label>
+                  <input type="text" value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} className="input" placeholder="YYYY-MM-DD" />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Phone Number</label>
+                <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="input" placeholder="Phone" />
+              </div>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
+                <button type="button" onClick={() => { setShowAddModal(false); setEditingPatient(null); }} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? "Saving..." : (editingPatient ? "Update" : "Add")}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
