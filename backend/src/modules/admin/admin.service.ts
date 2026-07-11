@@ -329,4 +329,116 @@ export class AdminService {
     await this.specialtyModel.findByIdAndDelete(id);
     return { success: true, message: 'Specialty category deleted successfully' };
   }
+
+  async addPatient(body: any) {
+    const { name, email, password, gender, dob, phone } = body;
+    if (!name || !email || !password) {
+      throw new BadRequestException({ success: false, message: 'Name, email and password are required' });
+    }
+
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+      throw new BadRequestException({ success: false, message: 'Invalid email format' });
+    }
+
+    const existingUser = await this.userModel.findOne({ email });
+    if (existingUser) {
+      throw new BadRequestException({ success: false, message: 'Patient with this email already exists' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new this.userModel({
+      name,
+      email,
+      password: hashedPassword,
+      gender: gender || 'Not Selected',
+      dob: dob || '',
+      phone: phone || '',
+    });
+    await newUser.save();
+    return { success: true, message: 'Patient created successfully' };
+  }
+
+  async updatePatient(body: any) {
+    const { userId, name, email, password, gender, dob, phone } = body;
+    if (!userId || !name || !email) {
+      throw new BadRequestException({ success: false, message: 'User ID, name and email are required' });
+    }
+
+    const updateData: any = {
+      name,
+      email,
+      gender: gender || 'Not Selected',
+      dob: dob || '',
+      phone: phone || '',
+    };
+
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
+    await this.userModel.findByIdAndUpdate(userId, updateData);
+    return { success: true, message: 'Patient updated successfully' };
+  }
+
+  async addAppointment(body: any) {
+    const { userId, docId, slotDate, slotTime } = body;
+    if (!userId || !docId || !slotDate || !slotTime) {
+      throw new BadRequestException({ success: false, message: 'Missing required booking fields' });
+    }
+
+    // Book slot atomically
+    const acquireQuery = {
+      _id: docId,
+      available: true,
+      $or: [
+        { [`slots_booked.${slotDate}`]: { $exists: false } },
+        { [`slots_booked.${slotDate}`]: { $ne: slotTime } },
+      ],
+    };
+
+    const acquireAction = {
+      $addToSet: {
+        [`slots_booked.${slotDate}`]: slotTime,
+      },
+    };
+
+    const docData = await this.doctorModel.findOneAndUpdate(acquireQuery, acquireAction, { new: true }).select('-password');
+    if (!docData) {
+      throw new BadRequestException({ success: false, message: 'Slot already booked or doctor unavailable' });
+    }
+
+    const userData = await this.userModel.findById(userId).select('-password');
+    if (!userData) {
+      // Rollback doctor slot booking
+      const releaseAction = {
+        $pull: {
+          [`slots_booked.${slotDate}`]: slotTime,
+        },
+      };
+      await this.doctorModel.findByIdAndUpdate(docId, releaseAction);
+      throw new NotFoundException({ success: false, message: 'Patient not found' });
+    }
+
+    const docDataCopy = docData.toObject();
+    delete docDataCopy.slots_booked;
+
+    const appointmentData = {
+      userId,
+      docId,
+      slotDate,
+      slotTime,
+      userData,
+      docData: docDataCopy,
+      amount: docData.fees,
+      date: Date.now(),
+    };
+
+    const newAppointment = new this.appointmentModel(appointmentData);
+    await newAppointment.save();
+    return { success: true, message: 'Appointment booked successfully' };
+  }
 }

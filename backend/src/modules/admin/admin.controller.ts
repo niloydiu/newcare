@@ -137,4 +137,22 @@ export class AdminController {
   async deleteSpecialty(@Body() body: any) {
     return this.adminService.deleteSpecialty(body);
   }
+
+  @Post('add-patient')
+  @UseGuards(AdminGuard)
+  async addPatient(@Body() body: any) {
+    return this.adminService.addPatient(body);
+  }
+
+  @Post('update-patient')
+  @UseGuards(AdminGuard)
+  async updatePatient(@Body() body: any) {
+    return this.adminService.updatePatient(body);
+  }
+
+  @Post('add-appointment')
+  @UseGuards(AdminGuard)
+  async addAppointment(@Body() body: any) {
+    return this.adminService.addAppointment(body);
+  }
 }
