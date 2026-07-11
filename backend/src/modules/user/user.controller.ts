@@ -7,6 +7,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Header,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -33,6 +34,7 @@ export class UserController {
   }
 
   @Get('google-oauth-url')
+  @Header('Cache-Control', 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600')
   async getGoogleOAuthUrl() {
     return this.userService.getGoogleOAuthUrl();
   }

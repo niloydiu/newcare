@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, UseGuards, Header } from '@nestjs/common';
 import { DoctorService } from './doctor.service';
 import { DoctorGuard } from '../../guards/doctor.guard';
 
@@ -7,6 +7,7 @@ export class DoctorController {
   constructor(private readonly doctorService: DoctorService) {}
 
   @Get('list')
+  @Header('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=120')
   async doctorList() {
     return this.doctorService.doctorList();
   }
