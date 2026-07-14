@@ -590,6 +590,35 @@ function AppointmentsTab() {
     docId: "",
     slotDate: "",
     slotTime: "",
+    appointmentType: "offline",
+    platform: "Google Meet",
+    meetingLink: "",
+    otherInfoOnline: "",
+    serialNumber: "",
+    place: "",
+    expectedTime: "",
+    location: "",
+    otherInfoOffline: ""
+  });
+
+  const [editingApp, setEditingApp] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    appointmentId: "",
+    slotDate: "",
+    slotTime: "",
+    appointmentType: "offline",
+    amount: 0,
+    cancelled: false,
+    isCompleted: false,
+    payment: false,
+    platform: "",
+    meetingLink: "",
+    otherInfoOnline: "",
+    serialNumber: "",
+    place: "",
+    expectedTime: "",
+    location: "",
+    otherInfoOffline: ""
   });
 
   const fetchAppointments = async () => {
@@ -671,11 +700,36 @@ function AppointmentsTab() {
     }
     setSubmitting(true);
     try {
-      const res = await api().post("/api/admin/add-appointment", bookForm);
+      const payload = {
+        userId: bookForm.userId,
+        docId: bookForm.docId,
+        slotDate: bookForm.slotDate,
+        slotTime: bookForm.slotTime,
+        appointmentType: bookForm.appointmentType,
+        onlineInfo: bookForm.appointmentType === "online" ? {
+          time: bookForm.slotTime,
+          platform: bookForm.platform,
+          meetingLink: bookForm.meetingLink,
+          otherInfo: bookForm.otherInfoOnline
+        } : null,
+        offlineInfo: bookForm.appointmentType === "offline" ? {
+          serialNumber: bookForm.serialNumber,
+          place: bookForm.place,
+          expectedTime: bookForm.expectedTime || bookForm.slotTime,
+          location: bookForm.location,
+          otherInfo: bookForm.otherInfoOffline
+        } : null
+      };
+
+      const res = await api().post("/api/admin/add-appointment", payload);
       if (res.data.success) {
         toast.success("Appointment booked successfully");
         setShowAddModal(false);
-        setBookForm({ userId: "", docId: "", slotDate: "", slotTime: "" });
+        setBookForm({
+          userId: "", docId: "", slotDate: "", slotTime: "",
+          appointmentType: "offline", platform: "Google Meet", meetingLink: "", otherInfoOnline: "",
+          serialNumber: "", place: "", expectedTime: "", location: "", otherInfoOffline: ""
+        });
         fetchAppointments();
       } else {
         toast.error(res.data.message || "Failed to book");
@@ -685,6 +739,71 @@ function AppointmentsTab() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleUpdateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const payload = {
+        appointmentId: editForm.appointmentId,
+        slotDate: editForm.slotDate,
+        slotTime: editForm.slotTime,
+        appointmentType: editForm.appointmentType,
+        amount: editForm.amount,
+        cancelled: editForm.cancelled,
+        isCompleted: editForm.isCompleted,
+        payment: editForm.payment,
+        onlineInfo: editForm.appointmentType === "online" ? {
+          time: editForm.slotTime,
+          platform: editForm.platform,
+          meetingLink: editForm.meetingLink,
+          otherInfo: editForm.otherInfoOnline
+        } : null,
+        offlineInfo: editForm.appointmentType === "offline" ? {
+          serialNumber: editForm.serialNumber,
+          place: editForm.place,
+          expectedTime: editForm.expectedTime || editForm.slotTime,
+          location: editForm.location,
+          otherInfo: editForm.otherInfoOffline
+        } : null
+      };
+
+      const res = await api().post("/api/admin/update-appointment", payload);
+      if (res.data.success) {
+        toast.success("Appointment updated successfully");
+        setEditingApp(null);
+        fetchAppointments();
+      } else {
+        toast.error(res.data.message || "Failed to update");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startEdit = (appt: any) => {
+    setEditingApp(appt);
+    setEditForm({
+      appointmentId: appt._id,
+      slotDate: appt.slotDate,
+      slotTime: appt.slotTime,
+      appointmentType: appt.appointmentType || "offline",
+      amount: appt.amount || 0,
+      cancelled: appt.cancelled || false,
+      isCompleted: appt.isCompleted || false,
+      payment: appt.payment || false,
+      platform: appt.onlineInfo?.platform || "Google Meet",
+      meetingLink: appt.onlineInfo?.meetingLink || "",
+      otherInfoOnline: appt.onlineInfo?.otherInfo || "",
+      serialNumber: appt.offlineInfo?.serialNumber || "",
+      place: appt.offlineInfo?.place || "",
+      expectedTime: appt.offlineInfo?.expectedTime || appt.slotTime || "",
+      location: appt.offlineInfo?.location || "",
+      otherInfoOffline: appt.offlineInfo?.otherInfo || ""
+    });
   };
 
   return (
@@ -702,7 +821,7 @@ function AppointmentsTab() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr style={{ background: "var(--bg-secondary)" }}>
-                {["Patient", "Doctor", "Specialty", "Date & Time", "Fee", "Status", "Actions"].map(h => (
+                {["Patient", "Doctor", "Specialty", "Date & Time", "Type", "Fee", "Status", "Actions"].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -723,6 +842,25 @@ function AppointmentsTab() {
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--text)" }}>{a.docData?.name}</td>
                   <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "var(--text-secondary)" }}>{a.docData?.speciality}</td>
                   <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "var(--text-secondary)" }}>{a.slotDate} • {a.slotTime}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "0.8rem" }}>
+                    {a.appointmentType === "online" ? (
+                      <div>
+                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", marginBottom: 4 }}>Online</span>
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>
+                          {a.onlineInfo?.platform || "Google Meet"}<br />
+                          {a.onlineInfo?.meetingLink && <a href={a.onlineInfo.meetingLink} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", textDecoration: "underline" }}>Link</a>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700, background: "rgba(245,158,11,0.1)", color: "#f59e0b", marginBottom: 4 }}>Offline</span>
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>
+                          Serial: {a.offlineInfo?.serialNumber || "—"}<br />
+                          Place: {a.offlineInfo?.place || "Clinic"}
+                        </div>
+                      </div>
+                    )}
+                  </td>
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", fontWeight: 700, color: "var(--primary)" }}>${a.amount}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{
@@ -734,6 +872,7 @@ function AppointmentsTab() {
                     </span>
                   </td>
                   <td style={{ padding: "12px 16px", display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button onClick={() => startEdit(a)} className="btn-primary" style={{ padding: "6px 12px", background: "rgba(14,165,233,0.1)", color: "#0ea5e9" }}>Edit</button>
                     {!a.cancelled && !a.isCompleted && (
                       <>
                         <button onClick={() => { setReschedulingApp(a); setNewDate(a.slotDate); setNewTime(a.slotTime); }} className="btn-primary" style={{ padding: "6px 12px", background: "rgba(99,102,241,0.1)", color: "var(--primary)" }}>Reschedule</button>
@@ -787,7 +926,7 @@ function AppointmentsTab() {
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: "20px"
         }}>
-          <div className="card" style={{ width: "100%", maxWidth: "450px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="card" style={{ width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
             <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Book New Appointment</h2>
             <form onSubmit={handleBookAppointment} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
@@ -816,10 +955,161 @@ function AppointmentsTab() {
                 <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Time Slot (e.g. 10:00 AM) *</label>
                 <input type="text" value={bookForm.slotTime} onChange={e => setBookForm({ ...bookForm, slotTime: e.target.value })} className="input" placeholder="HH:MM AM/PM" required />
               </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Appointment Type *</label>
+                <select value={bookForm.appointmentType} onChange={e => setBookForm({ ...bookForm, appointmentType: e.target.value })} className="input" required>
+                  <option value="offline">Offline (Clinic Visit)</option>
+                  <option value="online">Online (Video Consult)</option>
+                </select>
+              </div>
+
+              {bookForm.appointmentType === "online" ? (
+                <div style={{ padding: "10px", background: "var(--bg-secondary)", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <h4 style={{ fontSize: "0.8rem", fontWeight: 700, margin: 0 }}>Online Consultation Details</h4>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Meeting Platform</label>
+                    <input type="text" value={bookForm.platform} onChange={e => setBookForm({ ...bookForm, platform: e.target.value })} className="input" placeholder="e.g. Google Meet, Zoom" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Meeting Link (Optional)</label>
+                    <input type="text" value={bookForm.meetingLink} onChange={e => setBookForm({ ...bookForm, meetingLink: e.target.value })} className="input" placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Other Online Notes</label>
+                    <input type="text" value={bookForm.otherInfoOnline} onChange={e => setBookForm({ ...bookForm, otherInfoOnline: e.target.value })} className="input" placeholder="Notes for call..." />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "10px", background: "var(--bg-secondary)", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <h4 style={{ fontSize: "0.8rem", fontWeight: 700, margin: 0 }}>Offline Clinic Visit Details</h4>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Serial Number (Optional, auto-generated if blank)</label>
+                    <input type="text" value={bookForm.serialNumber} onChange={e => setBookForm({ ...bookForm, serialNumber: e.target.value })} className="input" placeholder="e.g. #01" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Place (Clinic Name)</label>
+                    <input type="text" value={bookForm.place} onChange={e => setBookForm({ ...bookForm, place: e.target.value })} className="input" placeholder="e.g. Health Plaza, Floor 2" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Expected Time (Optional)</label>
+                    <input type="text" value={bookForm.expectedTime} onChange={e => setBookForm({ ...bookForm, expectedTime: e.target.value })} className="input" placeholder="e.g. 10:15 AM" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Location (Address)</label>
+                    <input type="text" value={bookForm.location} onChange={e => setBookForm({ ...bookForm, location: e.target.value })} className="input" placeholder="Google Maps link or text address" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Other Notes</label>
+                    <input type="text" value={bookForm.otherInfoOffline} onChange={e => setBookForm({ ...bookForm, otherInfoOffline: e.target.value })} className="input" placeholder="Additional details..." />
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
                 <button type="submit" disabled={submitting} className="btn-primary">
                   {submitting ? "Booking..." : "Book Appointment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Appointment Modal */}
+      {editingApp && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px"
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: "500px", maxHeight: "90vh", overflowY: "auto", padding: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Edit Appointment ({editingApp.userData?.name || "Patient"})</h2>
+            <form onSubmit={handleUpdateAppointment} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Date (e.g. 2026-07-15) *</label>
+                <input type="text" value={editForm.slotDate} onChange={e => setEditForm({ ...editForm, slotDate: e.target.value })} className="input" placeholder="YYYY-MM-DD" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Time Slot (e.g. 10:00 AM) *</label>
+                <input type="text" value={editForm.slotTime} onChange={e => setEditForm({ ...editForm, slotTime: e.target.value })} className="input" placeholder="HH:MM AM/PM" required />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Fee Amount ($) *</label>
+                <input type="number" value={editForm.amount} onChange={e => setEditForm({ ...editForm, amount: Number(e.target.value) })} className="input" required />
+              </div>
+
+              {/* Status Toggles */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", padding: "10px", background: "var(--bg-secondary)", borderRadius: "8px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                  <input type="checkbox" checked={editForm.cancelled} onChange={e => setEditForm({ ...editForm, cancelled: e.target.checked })} />
+                  Cancelled
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                  <input type="checkbox" checked={editForm.isCompleted} onChange={e => setEditForm({ ...editForm, isCompleted: e.target.checked })} />
+                  Completed
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                  <input type="checkbox" checked={editForm.payment} onChange={e => setEditForm({ ...editForm, payment: e.target.checked })} />
+                  Paid
+                </label>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Appointment Type *</label>
+                <select value={editForm.appointmentType} onChange={e => setEditForm({ ...editForm, appointmentType: e.target.value })} className="input" required>
+                  <option value="offline">Offline (Clinic Visit)</option>
+                  <option value="online">Online (Video Consult)</option>
+                </select>
+              </div>
+
+              {editForm.appointmentType === "online" ? (
+                <div style={{ padding: "10px", background: "var(--bg-secondary)", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <h4 style={{ fontSize: "0.8rem", fontWeight: 700, margin: 0 }}>Online Consultation Details</h4>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Meeting Platform</label>
+                    <input type="text" value={editForm.platform} onChange={e => setEditForm({ ...editForm, platform: e.target.value })} className="input" placeholder="e.g. Google Meet, Zoom" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Meeting Link</label>
+                    <input type="text" value={editForm.meetingLink} onChange={e => setEditForm({ ...editForm, meetingLink: e.target.value })} className="input" placeholder="https://..." />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Other Online Notes</label>
+                    <input type="text" value={editForm.otherInfoOnline} onChange={e => setEditForm({ ...editForm, otherInfoOnline: e.target.value })} className="input" placeholder="Notes for call..." />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "10px", background: "var(--bg-secondary)", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <h4 style={{ fontSize: "0.8rem", fontWeight: 700, margin: 0 }}>Offline Clinic Visit Details</h4>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Serial Number</label>
+                    <input type="text" value={editForm.serialNumber} onChange={e => setEditForm({ ...editForm, serialNumber: e.target.value })} className="input" placeholder="e.g. #01" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Place (Clinic Name)</label>
+                    <input type="text" value={editForm.place} onChange={e => setEditForm({ ...editForm, place: e.target.value })} className="input" placeholder="e.g. Health Plaza" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Expected Time</label>
+                    <input type="text" value={editForm.expectedTime} onChange={e => setEditForm({ ...editForm, expectedTime: e.target.value })} className="input" placeholder="e.g. 10:15 AM" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Location (Address)</label>
+                    <input type="text" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} className="input" placeholder="Address or Google Maps link" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", color: "var(--text-secondary)", display: "block", marginBottom: 3 }}>Other Notes</label>
+                    <input type="text" value={editForm.otherInfoOffline} onChange={e => setEditForm({ ...editForm, otherInfoOffline: e.target.value })} className="input" placeholder="Additional details..." />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "1rem" }}>
+                <button type="button" onClick={() => setEditingApp(null)} className="btn-danger" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn-primary">
+                  {submitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

@@ -47,6 +47,15 @@ export class Appointment extends Document {
 
   @Prop({ type: Object, default: null })
   prescription: Record<string, any>;
+
+  @Prop({ required: true, default: 'offline' })
+  appointmentType: string;
+
+  @Prop({ type: Object, default: null })
+  onlineInfo: Record<string, any>;
+
+  @Prop({ type: Object, default: null })
+  offlineInfo: Record<string, any>;
 }
 
 export const AppointmentSchema = SchemaFactory.createForClass(Appointment);

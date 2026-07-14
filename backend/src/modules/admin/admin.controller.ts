@@ -155,4 +155,10 @@ export class AdminController {
   async addAppointment(@Body() body: any) {
     return this.adminService.addAppointment(body);
   }
+
+  @Post('update-appointment')
+  @UseGuards(AdminGuard)
+  async updateAppointment(@Body() body: any) {
+    return this.adminService.updateAppointment(body);
+  }
 }

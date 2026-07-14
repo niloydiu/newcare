@@ -23,6 +23,20 @@ interface Appointment {
   isCompleted: boolean;
   payment: boolean;
   date: number;
+  appointmentType?: string;
+  onlineInfo?: {
+    time?: string;
+    platform?: string;
+    meetingLink?: string;
+    otherInfo?: string;
+  };
+  offlineInfo?: {
+    serialNumber?: string;
+    place?: string;
+    expectedTime?: string;
+    location?: string;
+    otherInfo?: string;
+  };
 }
 
 function formatSlotDate(key: string) {
@@ -170,6 +184,58 @@ export default function MyAppointmentsPage() {
                         <DollarSign size={13} style={{ color: "var(--text-muted)" }} />
                         <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>${appt.docData?.fees || appt.amount}</span>
                       </div>
+                    </div>
+
+                    {/* Online/Offline Info */}
+                    <div style={{ marginTop: "8px", borderTop: "1px dashed var(--border)", paddingTop: "8px" }}>
+                      {appt.appointmentType === "online" ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#10b981", background: "rgba(16,185,129,0.1)", padding: "2px 8px", borderRadius: "4px", width: "max-content" }}>
+                            Online ({appt.onlineInfo?.platform || "Google Meet"})
+                          </span>
+                          {appt.onlineInfo?.meetingLink && (
+                            <a
+                              href={appt.onlineInfo.meetingLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ fontSize: "0.78rem", color: "var(--primary)", fontWeight: 600, textDecoration: "underline" }}
+                            >
+                              Join Call: {appt.onlineInfo.meetingLink}
+                            </a>
+                          )}
+                          {appt.onlineInfo?.otherInfo && (
+                            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
+                              Note: {appt.onlineInfo.otherInfo}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "2px 8px", borderRadius: "4px", width: "max-content" }}>
+                              Clinic Visit
+                            </span>
+                            {appt.offlineInfo?.serialNumber && (
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text)" }}>
+                                Serial: {appt.offlineInfo.serialNumber}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", margin: 0 }}>
+                            <strong>Place:</strong> {appt.offlineInfo?.place || appt.offlineInfo?.location || "Doctor's Clinic"}
+                          </p>
+                          {appt.offlineInfo?.expectedTime && (
+                            <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", margin: 0 }}>
+                              <strong>Expected Time:</strong> {appt.offlineInfo.expectedTime}
+                            </p>
+                          )}
+                          {appt.offlineInfo?.otherInfo && (
+                            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
+                              Note: {appt.offlineInfo.otherInfo}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

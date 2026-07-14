@@ -121,7 +121,7 @@ export class UserService {
   }
 
   async bookAppointment(userId: string, body: any) {
-    const { docId, slotDate, slotTime } = body;
+    const { docId, slotDate, slotTime, appointmentType, onlineInfo, offlineInfo } = body;
     if (!userId || !docId || !slotDate || !slotTime) {
       throw new BadRequestException({
         success: false,
@@ -161,6 +161,30 @@ export class UserService {
     const docDataCopy = docData.toObject();
     delete docDataCopy.slots_booked;
 
+    const type = appointmentType === 'online' ? 'online' : 'offline';
+    let computedOnlineInfo = null;
+    let computedOfflineInfo = null;
+
+    if (type === 'online') {
+      computedOnlineInfo = {
+        time: onlineInfo?.time || slotTime,
+        platform: onlineInfo?.platform || 'Google Meet',
+        meetingLink: onlineInfo?.meetingLink || `https://meet.google.com/mock-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`,
+        otherInfo: onlineInfo?.otherInfo || '',
+      };
+    } else {
+      const existingCount = await this.appointmentModel.countDocuments({ docId, slotDate });
+      const serialNum = `#${(existingCount + 1).toString().padStart(2, '0')}`;
+      const doctorAddress = docDataCopy.address ? `${docDataCopy.address.line1}, ${docDataCopy.address.line2}` : 'Main Clinic';
+      computedOfflineInfo = {
+        serialNumber: offlineInfo?.serialNumber || serialNum,
+        place: offlineInfo?.place || doctorAddress,
+        expectedTime: offlineInfo?.expectedTime || slotTime,
+        location: offlineInfo?.location || doctorAddress,
+        otherInfo: offlineInfo?.otherInfo || '',
+      };
+    }
+
     const appointmentData = {
       userId,
       docId,
@@ -170,6 +194,9 @@ export class UserService {
       docData: docDataCopy,
       amount: docData.fees,
       date: Date.now(),
+      appointmentType: type,
+      onlineInfo: computedOnlineInfo,
+      offlineInfo: computedOfflineInfo,
     };
 
     const newAppointment = new this.appointmentModel(appointmentData);

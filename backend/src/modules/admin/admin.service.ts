@@ -385,7 +385,7 @@ export class AdminService {
   }
 
   async addAppointment(body: any) {
-    const { userId, docId, slotDate, slotTime } = body;
+    const { userId, docId, slotDate, slotTime, appointmentType, onlineInfo, offlineInfo } = body;
     if (!userId || !docId || !slotDate || !slotTime) {
       throw new BadRequestException({ success: false, message: 'Missing required booking fields' });
     }
@@ -426,6 +426,30 @@ export class AdminService {
     const docDataCopy = docData.toObject();
     delete docDataCopy.slots_booked;
 
+    const type = appointmentType === 'online' ? 'online' : 'offline';
+    let computedOnlineInfo = null;
+    let computedOfflineInfo = null;
+
+    if (type === 'online') {
+      computedOnlineInfo = {
+        time: onlineInfo?.time || slotTime,
+        platform: onlineInfo?.platform || 'Google Meet',
+        meetingLink: onlineInfo?.meetingLink || `https://meet.google.com/mock-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 6)}`,
+        otherInfo: onlineInfo?.otherInfo || '',
+      };
+    } else {
+      const existingCount = await this.appointmentModel.countDocuments({ docId, slotDate });
+      const serialNum = `#${(existingCount + 1).toString().padStart(2, '0')}`;
+      const doctorAddress = docDataCopy.address ? `${docDataCopy.address.line1}, ${docDataCopy.address.line2}` : 'Main Clinic';
+      computedOfflineInfo = {
+        serialNumber: offlineInfo?.serialNumber || serialNum,
+        place: offlineInfo?.place || doctorAddress,
+        expectedTime: offlineInfo?.expectedTime || slotTime,
+        location: offlineInfo?.location || doctorAddress,
+        otherInfo: offlineInfo?.otherInfo || '',
+      };
+    }
+
     const appointmentData = {
       userId,
       docId,
@@ -435,10 +459,78 @@ export class AdminService {
       docData: docDataCopy,
       amount: docData.fees,
       date: Date.now(),
+      appointmentType: type,
+      onlineInfo: computedOnlineInfo,
+      offlineInfo: computedOfflineInfo,
     };
 
     const newAppointment = new this.appointmentModel(appointmentData);
     await newAppointment.save();
     return { success: true, message: 'Appointment booked successfully' };
+  }
+
+  async updateAppointment(body: any) {
+    const { appointmentId, slotDate, slotTime, appointmentType, onlineInfo, offlineInfo, amount, cancelled, isCompleted, payment } = body;
+    if (!appointmentId) {
+      throw new BadRequestException({ success: false, message: 'Appointment ID is required' });
+    }
+    const appointmentData = await this.appointmentModel.findById(appointmentId);
+    if (!appointmentData) {
+      throw new NotFoundException({ success: false, message: 'Appointment not found' });
+    }
+
+    // Handle rescheduling logic if slotDate or slotTime changes
+    let docId = appointmentData.docId;
+    if ((slotDate && slotDate !== appointmentData.slotDate) || (slotTime && slotTime !== appointmentData.slotTime)) {
+      const newSlotDate = slotDate || appointmentData.slotDate;
+      const newSlotTime = slotTime || appointmentData.slotTime;
+      const oldSlotDate = appointmentData.slotDate;
+      const oldSlotTime = appointmentData.slotTime;
+
+      // Acquire new slot atomically
+      const acquireQuery = {
+        _id: docId,
+        available: true,
+        $or: [
+          { [`slots_booked.${newSlotDate}`]: { $exists: false } },
+          { [`slots_booked.${newSlotDate}`]: { $ne: newSlotTime } },
+        ],
+      };
+      const acquireAction = {
+        $addToSet: {
+          [`slots_booked.${newSlotDate}`]: newSlotTime,
+        },
+      };
+      const updatedDoc = await this.doctorModel.findOneAndUpdate(acquireQuery, acquireAction, { new: true });
+      if (!updatedDoc) {
+        throw new BadRequestException({
+          success: false,
+          message: 'The requested new slot is already booked or doctor is not available',
+        });
+      }
+
+      // Release old slot
+      const releaseAction = {
+        $pull: {
+          [`slots_booked.${oldSlotDate}`]: oldSlotTime,
+        },
+      };
+      await this.doctorModel.findByIdAndUpdate(docId, releaseAction);
+    }
+
+    // Now construct update object
+    const updateObj: any = {};
+    if (slotDate) updateObj.slotDate = slotDate;
+    if (slotTime) updateObj.slotTime = slotTime;
+    if (appointmentType) updateObj.appointmentType = appointmentType;
+    if (onlineInfo !== undefined) updateObj.onlineInfo = onlineInfo;
+    if (offlineInfo !== undefined) updateObj.offlineInfo = offlineInfo;
+    if (amount !== undefined) updateObj.amount = amount;
+    if (cancelled !== undefined) updateObj.cancelled = cancelled;
+    if (isCompleted !== undefined) updateObj.isCompleted = isCompleted;
+    if (payment !== undefined) updateObj.payment = payment;
+
+    const updatedAppointment = await this.appointmentModel.findByIdAndUpdate(appointmentId, updateObj, { new: true });
+    return { success: true, message: 'Appointment updated successfully', appointment: updatedAppointment };
   }
 }
